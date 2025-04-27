@@ -70,242 +70,79 @@
     - `go run ./cmd/mcpgen`
 
 ### 2.3 サーバー実装
-- [ ] `cmd/server/main.go`の実装
-  - [ ] コマンドラインオプションの実装
-    ```go
-    rootDir := flag.String("root", ".", "ディレクトリルートパス")
-    pkgDir := flag.String("pkg", "", "特定のパッケージディレクトリ（オプション）")
-    flag.Parse()
-    ```
-  - [ ] パーサーの初期化
-    ```go
-    p, err := parser.New(*rootDir, *pkgDir)
-    if err != nil {
-        log.Fatalf("failed to initialize parser: %v", err)
-    }
-    ```
-  - [ ] MCPサーバーの起動
-    ```go
-    handler := NewHandler(&ToolHandler{parser: p})
-    
-    ctx, listener, binder := mcp.NewStdioTransport(context.Background(), handler, nil)
-    srv, err := jsonrpc2.Serve(ctx, listener, binder)
-    if err != nil {
-        log.Fatalf("failed to serve: %v", err)
-    }
-    
-    srv.Wait()
-    ```
-  - [ ] エラーハンドリング
-    - [ ] パーサー初期化エラーの処理
-    - [ ] サーバー起動エラーの処理
+- [x] `cmd/server/main.go`の実装
+  - [x] コマンドラインオプションの実装
+  - [x] パーサーの初期化
+  - [x] MCPサーバーの起動
+  - [x] エラーハンドリング
 
 ### 2.4 ツールハンドラーの実装
 - [ ] `internal/handler/handler.go`の実装
-  - [ ] ハンドラー構造体の定義
-    ```go
-    type ToolHandler struct {
-        parser *parser.Parser
-    }
-    ```
+  - [x] ハンドラー構造体の定義
   - [ ] `list_packages`ハンドラーの実装
-    ```go
-    func (h *ToolHandler) HandleToolListPackages(ctx context.Context, req *ToolListPackagesRequest) (*mcp.CallToolResult, error) {
-        packages := h.parser.GetAllPackages()
-        return &mcp.CallToolResult{
-            Content: []mcp.CallToolContent{
-                mcp.TextContent{Text: formatPackageList(packages)},
-            },
-        }, nil
-    }
-    ```
+    - [x] 基本的な実装
+    - [ ] 適切なフォーマットの実装
   - [ ] `inspect_package`ハンドラーの実装
-    ```go
-    func (h *ToolHandler) HandleToolInspectPackage(ctx context.Context, req *ToolInspectPackageRequest) (*mcp.CallToolResult, error) {
-        pkg, err := h.parser.GetPackage(req.PackageName)
-        if err != nil {
-            return nil, fmt.Errorf("package not found: %s", req.PackageName)
-        }
-        return &mcp.CallToolResult{
-            Content: []mcp.CallToolContent{
-                mcp.TextContent{Text: formatPackageInspection(pkg, req.IncludeComments)},
-            },
-        }, nil
-    }
-    ```
+    - [x] 基本的な実装
+    - [ ] パッケージの構造体、メソッド、関数の情報抽出
   - [ ] `get_doc_struct`ハンドラーの実装
-    ```go
-    func (h *ToolHandler) HandleToolGetDocStruct(ctx context.Context, req *ToolGetDocStructRequest) (*mcp.CallToolResult, error) {
-        pkg, err := h.parser.GetPackage(req.PackageName)
-        if err != nil {
-            return nil, fmt.Errorf("package not found: %s", req.PackageName)
-        }
-        
-        // パーサーから *packages.Package (または関連する types パッケージの型) を受け取り、
-        // それを解析して構造体情報を取得する
-        structType, err := findStructType(pkg, req.StructName)
-        if err != nil {
-            return nil, fmt.Errorf("struct not found: %s in package %s", req.StructName, req.PackageName)
-        }
-        
-        return &mcp.CallToolResult{
-            Content: []mcp.CallToolContent{
-                mcp.TextContent{Text: formatStructDoc(structType)},
-            },
-        }, nil
-    }
-    ```
+    - [x] 基本的な実装
+    - [ ] 構造体情報の抽出
   - [ ] `get_doc_func`ハンドラーの実装
+    - [x] 基本的な実装
+    - [ ] 関数情報の抽出
   - [ ] `get_doc_method`ハンドラーの実装
+    - [x] 基本的な実装
+    - [ ] メソッド情報の抽出
   - [ ] `get_doc_const_and_var`ハンドラーの実装
-  - [ ] エラーハンドリング
-    - [ ] パッケージが見つからない場合
-    - [ ] 構造体や関数が見つからない場合
-    - [ ] 解析エラーの場合
+    - [x] 基本的な実装
+    - [ ] 定数・変数情報の抽出
+  - [x] エラーハンドリング
   - [ ] レスポンスの整形
     - [ ] マークダウン形式での出力
     - [ ] コードブロックの適切な使用
 
 ### 2.5 Goファイル解析の実装
-- [ ] `internal/parser/parser.go`の実装
-  - [ ] `golang.org/x/tools/go/packages`を使用したパッケージロード
-    ```go
-    func LoadPackages(dir string, patterns ...string) ([]*packages.Package, error) {
-        if len(patterns) == 0 {
-            patterns = []string{"./..."}
-        }
-        
-        cfg := &packages.Config{
-            Mode: packages.NeedName | 
-                  packages.NeedFiles | 
-                  packages.NeedCompiledGoFiles |
-                  packages.NeedImports |
-                  packages.NeedDeps |
-                  packages.NeedTypes | 
-                  packages.NeedSyntax |
-                  packages.NeedTypesInfo,
-            Dir: dir,
-            Tests: false,
-        }
-        
-        return packages.Load(cfg, patterns...)
-    }
-    ```
-  - [ ] パッケージ情報の抽出
-    ```go
-    // 独自モデルへの変換は行わず、*packages.Package を直接利用する
-    // func extractPackageInfo(pkg *packages.Package) *model.Package { ... }
-    ```
-  - [ ] 構造体情報の抽出
-  - [ ] 関数情報の抽出
-  - [ ] メソッド情報の抽出
-  - [ ] 定数・変数情報の抽出
+- [x] `internal/parser/parser.go`の実装
+  - [x] `golang.org/x/tools/go/packages`を使用したパッケージロード
+    - [x] `New`関数によるパッケージのロード
+    - [x] `GetAllPackages`関数による全パッケージの取得
+    - [x] `GetPackage`関数による特定パッケージの取得
+  - [x] パッケージ情報の抽出
+  - [x] 構造体情報の抽出
+    - [x] `GetStructInfo`関数による構造体情報の取得
+    - [x] フィールド情報の取得
+    - [x] メソッド情報の取得
+  - [x] 関数情報の抽出
+    - [x] `GetFuncInfo`関数による関数情報の取得
+    - [x] 例の取得
+  - [x] メソッド情報の抽出
+    - [x] `GetMethodInfo`関数によるメソッド情報の取得
+    - [x] 例の取得
+  - [x] 定数・変数情報の抽出
+    - [x] `GetConstAndVarInfo`関数による定数・変数情報の取得
   - [ ] パフォーマンス最適化
     - [ ] 並行処理による解析の高速化
     - [ ] メモリ使用量の最適化
     - [ ] インクリメンタル解析の実装（オプション）
 
 ### 2.6 データモデルの設計
-
-**設計変更:** 当初はGoのパッケージ構造を表す独自のデータモデルを定義する計画でしたが、`golang.org/x/tools/go/packages` が提供する型 (`packages.Package` など) を直接利用する方針に変更しました。これにより、モデル定義と変換処理のコストを削減します。`internal/model` パッケージは、MCPツールのリクエストパラメータ構造体 (ただし `mcp.gen.go` で生成されるものを優先的に利用) や、レスポンス整形用の補助的な構造体が必要になった場合に利用します。
-
-- [ ] `internal/model/model.go`の実装
-  - [ ] MCPツールのリクエストパラメータを表す構造体や、レスポンス整形用の補助的な構造体を定義する
-  ```go
-  // 例:
-  // type InspectPackageParams struct {
-  //     PackageName     string `json:"packageName"`
-  //     IncludeComments bool   `json:"includeComments"`
-  // }
-  // type FormattedDoc struct { ... }
-  ```
+- [x] `internal/model/model.go`の実装
+  - [x] MCPツールのリクエストパラメータを表す構造体や、レスポンス整形用の補助的な構造体を定義する
 
 ### 2.7 レスポンス設計
-- [ ] 各ツールのレスポンス形式の定義
-  - [ ] 共通レスポンス構造の設計
-    - [ ] `mcp.CallToolResult`構造体の活用
-    - [ ] エラーハンドリングの統一
-  - [ ] `list_packages`のレスポンス
-    ```go
-    return &mcp.CallToolResult{
-        Content: []mcp.CallToolContent{
-            mcp.TextContent{Text: formatPackageList(packages)},
-        },
-    }, nil
-    ```
-  - [ ] `inspect_package`のレスポンス
-    ```go
-    return &mcp.CallToolResult{
-        Content: []mcp.CallToolContent{
-            mcp.TextContent{Text: formatPackageInspection(pkg, includeComments)},
-        },
-    }, nil
-    ```
-  - [ ] `get_doc_struct`のレスポンス
-    ```go
-    return &mcp.CallToolResult{
-        Content: []mcp.CallToolContent{
-            mcp.TextContent{Text: formatStructDoc(structInfo)},
-        },
-    }, nil
-    ```
-  - [ ] `get_doc_func`のレスポンス
-    ```go
-    return &mcp.CallToolResult{
-        Content: []mcp.CallToolContent{
-            mcp.TextContent{Text: formatFuncDoc(funcInfo)},
-        },
-    }, nil
-    ```
-  - [ ] `get_doc_method`のレスポンス
-    ```go
-    return &mcp.CallToolResult{
-        Content: []mcp.CallToolContent{
-            mcp.TextContent{Text: formatMethodDoc(methodInfo)},
-        },
-    }, nil
-    ```
-  - [ ] `get_doc_const_and_var`のレスポンス
-    ```go
-    return &mcp.CallToolResult{
-        Content: []mcp.CallToolContent{
-            mcp.TextContent{Text: formatConstAndVarDoc(constVarInfo)},
-        },
-    }, nil
-    ```
-
-- [ ] フォーマット関数の実装
-  - [ ] `formatPackageList`: パッケージリストのフォーマット
-    - [ ] パッケージ名と簡潔な説明を含む
-    - [ ] マークダウン形式での出力
-  - [ ] `formatPackageInspection`: パッケージ検査結果のフォーマット
-    - [ ] 構造体、関数、メソッドのリスト
-    - [ ] オプションでコメントを含める
-  - [ ] `formatStructDoc`: 構造体ドキュメントのフォーマット
-    - [ ] 構造体コメント
-    - [ ] フィールドリストとコメント
-    - [ ] メソッドリストとコメント
-  - [ ] `formatFuncDoc`: 関数ドキュメントのフォーマット
-    - [ ] 関数シグネチャ
-    - [ ] 関数コメント
-  - [ ] `formatMethodDoc`: メソッドドキュメントのフォーマット
-    - [ ] メソッドシグネチャ
-    - [ ] メソッドコメント
-  - [ ] `formatConstAndVarDoc`: 定数・変数ドキュメントのフォーマット
-    - [ ] 定数・変数の型情報
-    - [ ] 定数・変数コメント
-
-- [ ] 出力形式の統一
-  - [ ] マークダウン形式での出力
-  - [ ] コードブロックの適切な使用
-  - [ ] 見出しレベルの一貫性
-  - [ ] リストの適切な使用
+- [x] 各ツールのレスポンス形式の定義
+  - [x] 共通レスポンス構造の設計
+  - [x] `list_packages`のレスポンス
+  - [x] `inspect_package`のレスポンス
+  - [x] `get_doc_struct`のレスポンス
+  - [x] `get_doc_func`のレスポンス
+  - [x] `get_doc_method`のレスポンス
+  - [x] `get_doc_const_and_var`のレスポンス
 
 ### 2.8 テストの実装
 - [ ] ユニットテストの作成
   - [ ] ハンドラーのテスト
-    - [ ] 各ツールハンドラーの入出力テスト
-    - [ ] エラーケースのテスト
   - [ ] パーサーのテスト
     - [ ] パッケージロードのテスト
     - [ ] 情報抽出のテスト
@@ -324,19 +161,19 @@
 ## 3. 実装の優先順位
 
 1. 基本的なMCPサーバーの構築
-   - [ ] コード生成の設定
-   - [ ] サーバーの起動
-   - [ ] 基本的なツールの実装
+   - [x] コード生成の設定
+   - [x] サーバーの起動
+   - [x] 基本的なツールの実装
 
 2. Goファイル解析の実装
-   - [ ] `golang.org/x/tools/go/packages`を使用したパーサーの実装
-   - [ ] 情報抽出の実装
-   - [ ] データモデルの実装
+   - [x] `golang.org/x/tools/go/packages`を使用したパーサーの実装
+   - [x] 情報抽出の実装
+   - [x] データモデルの実装
 
 3. ツールハンドラーの実装
    - [ ] 各ツールのハンドラー実装
-   - [ ] レスポンス形式の統一
-   - [ ] エラーハンドリングの実装
+   - [x] レスポンス形式の統一
+   - [x] エラーハンドリングの実装
 
 4. テストとドキュメントの整備
    - [ ] ユニットテスト
@@ -371,7 +208,7 @@
 2. [x] `cmd/mcpgen/main.go`の実装
 3. [x] 基本的なツールの定義
 4. [x] コード生成の実行
-5. [ ] `internal/model/model.go` の実装 (MCPパラメータ/レスポンス整形用構造体)
+5. [x] `internal/model/model.go` の実装 (MCPパラメータ/レスポンス整形用構造体)
 6. [x] `internal/parser/parser.go`の実装
 7. [x] `internal/handler/handler.go`の実装 (基本実装)
 8. [x] `cmd/server/main.go`の実装
@@ -401,24 +238,54 @@
 1. パーサーの実装
    - [x] `golang.org/x/tools/go/packages`を使用したパッケージロード
    - [x] パッケージ情報の抽出
-   - [ ] 構造体情報の抽出
-   - [ ] 関数情報の抽出
-   - [ ] メソッド情報の抽出
-   - [ ] 定数・変数情報の抽出
+   - [x] 構造体情報の抽出
+   - [x] 関数情報の抽出
+   - [x] メソッド情報の抽出
+   - [x] 定数・変数情報の抽出
 
 2. ハンドラーの実装
    - [ ] `list_packages`ハンドラーの実装
+     - [x] 基本的な実装
+     - [ ] 適切なフォーマットの実装
    - [ ] `inspect_package`ハンドラーの実装
+     - [x] 基本的な実装
+     - [ ] パッケージの構造体、メソッド、関数の情報抽出
    - [ ] `get_doc_struct`ハンドラーの実装
+     - [x] 基本的な実装
+     - [ ] 構造体情報の抽出
    - [ ] `get_doc_func`ハンドラーの実装
+     - [x] 基本的な実装
+     - [ ] 関数情報の抽出
    - [ ] `get_doc_method`ハンドラーの実装
+     - [x] 基本的な実装
+     - [ ] メソッド情報の抽出
    - [ ] `get_doc_const_and_var`ハンドラーの実装
+     - [x] 基本的な実装
+     - [ ] 定数・変数情報の抽出
+   - [ ] レスポンスの整形
+     - [ ] マークダウン形式での出力
+     - [ ] コードブロックの適切な使用
 
-3. サーバーの実装
-   - [ ] コマンドラインオプションの実装
-   - [ ] パーサーの初期化
-   - [ ] MCPサーバーの起動
-   - [ ] エラーハンドリング
+3. パフォーマンス最適化
+   - [ ] 並行処理による解析の高速化
+   - [ ] メモリ使用量の最適化
+   - [ ] インクリメンタル解析の実装（オプション）
+
+4. テストの実装
+   - [ ] ハンドラーのテスト
+     - [ ] 各ツールハンドラーの入出力テスト
+     - [ ] エラーケースのテスト
+   - [ ] パーサーのテスト
+     - [ ] パッケージロードのテスト
+     - [ ] 情報抽出のテスト
+     - [ ] エラーケースのテスト
+   - [ ] 統合テスト
+     - [ ] サーバー全体のテスト
+     - [ ] テストデータの準備
+
+5. ドキュメントの整備
+   - [ ] READMEの更新
+   - [ ] 使用例の追加
 
 ## 今後の改善点
 
