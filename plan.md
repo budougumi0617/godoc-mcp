@@ -66,72 +66,8 @@
 ### 2.2 コード生成の設定
 - [x] `cmd/mcpgen/main.go`の実装
   - [x] サーバー定義の作成
-    ```go
-    def := &codegen.ServerDefinition{
-        Capabilities: codegen.ServerCapabilities{
-            Tools:   &codegen.ToolCapability{},
-            Logging: &codegen.LoggingCapability{},
-        },
-        Implementation: codegen.Implementation{
-            Name:    "GoDoc MCP Server",
-            Version: "0.0.1",
-        },
-        // ツール定義
-        Tools: []codegen.Tool{
-            {
-                Name:        "list_packages",
-                Description: "読み込んだパッケージの一覧とパッケージコメントを表示します",
-                InputSchema: struct{}{},
-            },
-            {
-                Name:        "inspect_package",
-                Description: "指定されたパッケージ内の公開されている構造体、メソッド、関数をリストします",
-                InputSchema: struct {
-                    PackageName    string `json:"package_name" jsonschema:"description=パッケージ名"`
-                    IncludeComments bool   `json:"include_comments,omitempty" jsonschema:"description=コメントを含めるかどうか,default=true"`
-                }{},
-            },
-            {
-                Name:        "get_doc_struct",
-                Description: "指定された構造体の情報を返します",
-                InputSchema: struct {
-                    PackageName string `json:"package_name" jsonschema:"description=構造体のパッケージ名"`
-                    StructName  string `json:"struct_name" jsonschema:"description=構造体の名前"`
-                }{},
-            },
-            {
-                Name:        "get_doc_func",
-                Description: "指定された関数の情報を返します",
-                InputSchema: struct {
-                    PackageName string `json:"package_name" jsonschema:"description=関数のパッケージ名"`
-                    FuncName    string `json:"func_name" jsonschema:"description=関数の名前"`
-                }{},
-            },
-            {
-                Name:        "get_doc_method",
-                Description: "指定された構造体のメソッドの情報を返します",
-                InputSchema: struct {
-                    PackageName string `json:"package_name" jsonschema:"description=構造体のパッケージ名"`
-                    StructName  string `json:"struct_name" jsonschema:"description=構造体の名前"`
-                    MethodName  string `json:"method_name" jsonschema:"description=メソッド名"`
-                }{},
-            },
-            {
-                Name:        "get_doc_const_and_var",
-                Description: "指定されたパッケージの定数や変数情報を返します",
-                InputSchema: struct {
-                    PackageName string `json:"package_name" jsonschema:"description=パッケージ名"`
-                }{},
-            },
-        },
-    }
-    ```
   - [x] コード生成の実行
-    ```go
-    if err := codegen.Generate(f, def, "godoc"); err != nil {
-        log.Fatalf("failed to generate code: %v", err)
-    }
-    ```
+    - `go run ./cmd/mcpgen`
 
 ### 2.3 サーバー実装
 - [ ] `cmd/server/main.go`の実装
@@ -205,14 +141,16 @@
             return nil, fmt.Errorf("package not found: %s", req.PackageName)
         }
         
-        structInfo, err := pkg.GetStruct(req.StructName)
+        // パーサーから *packages.Package (または関連する types パッケージの型) を受け取り、
+        // それを解析して構造体情報を取得する
+        structType, err := findStructType(pkg, req.StructName)
         if err != nil {
             return nil, fmt.Errorf("struct not found: %s in package %s", req.StructName, req.PackageName)
         }
         
         return &mcp.CallToolResult{
             Content: []mcp.CallToolContent{
-                mcp.TextContent{Text: formatStructDoc(structInfo)},
+                mcp.TextContent{Text: formatStructDoc(structType)},
             },
         }, nil
     }
@@ -255,137 +193,32 @@
     ```
   - [ ] パッケージ情報の抽出
     ```go
-    func extractPackageInfo(pkg *packages.Package) *model.Package {
-        info := &model.Package{
-            Name:       pkg.Name,
-            ImportPath: pkg.PkgPath,
-        }
-        
-        // パッケージドキュメントの抽出
-        docPkg := extractDocPackage(pkg)
-        if docPkg != nil {
-            info.Doc = docPkg.Doc
-        }
-        
-        // 型情報の抽出
-        scope := pkg.Types.Scope()
-        for _, name := range scope.Names() {
-            obj := scope.Lookup(name)
-            if !obj.Exported() {
-                continue
-            }
-            
-            switch obj := obj.(type) {
-            case *types.TypeName:
-                if named, ok := obj.Type().(*types.Named); ok {
-                    if struct_, ok := named.Underlying().(*types.Struct); ok {
-                        info.Structs = append(info.Structs, extractStructInfo(obj, named, struct_, pkg, docPkg))
-                    }
-                }
-            case *types.Func:
-                info.Functions = append(info.Functions, extractFunctionInfo(obj, pkg, docPkg))
-            case *types.Const:
-                info.Constants = append(info.Constants, extractConstantInfo(obj, pkg, docPkg))
-            case *types.Var:
-                info.Variables = append(info.Variables, extractVariableInfo(obj, pkg, docPkg))
-            }
-        }
-        
-        return info
-    }
+    // 独自モデルへの変換は行わず、*packages.Package を直接利用する
+    // func extractPackageInfo(pkg *packages.Package) *model.Package { ... }
     ```
   - [ ] 構造体情報の抽出
   - [ ] 関数情報の抽出
   - [ ] メソッド情報の抽出
   - [ ] 定数・変数情報の抽出
-  - [ ] データモデルへの変換
   - [ ] パフォーマンス最適化
     - [ ] 並行処理による解析の高速化
     - [ ] メモリ使用量の最適化
     - [ ] インクリメンタル解析の実装（オプション）
 
 ### 2.6 データモデルの設計
+
+**設計変更:** 当初はGoのパッケージ構造を表す独自のデータモデルを定義する計画でしたが、`golang.org/x/tools/go/packages` が提供する型 (`packages.Package` など) を直接利用する方針に変更しました。これにより、モデル定義と変換処理のコストを削減します。`internal/model` パッケージは、MCPツールのリクエストパラメータ構造体 (ただし `mcp.gen.go` で生成されるものを優先的に利用) や、レスポンス整形用の補助的な構造体が必要になった場合に利用します。
+
 - [ ] `internal/model/model.go`の実装
-  - [ ] パッケージ情報の構造体
-    ```go
-    type Package struct {
-        Name       string
-        ImportPath string
-        Doc        string
-        Structs    []*Struct
-        Functions  []*Function
-        Constants  []*Constant
-        Variables  []*Variable
-        
-        GetStruct(name string) (*Struct, error)
-        GetFunction(name string) (*Function, error)
-    }
-    ```
-  - [ ] 構造体情報の構造体
-    ```go
-    type Struct struct {
-        Name    string
-        Doc     string
-        Fields  []*Field
-        Methods []*Method
-        
-        GetMethod(name string) (*Method, error)
-    }
-    ```
-  - [ ] 関数情報の構造体
-    ```go
-    type Function struct {
-        Name      string
-        Doc       string
-        Signature string
-        Params    []*Parameter
-        Results   []*Parameter
-    }
-    ```
-  - [ ] メソッド情報の構造体
-    ```go
-    type Method struct {
-        Name         string
-        Doc          string
-        Signature    string
-        ReceiverType string
-        Params       []*Parameter
-        Results      []*Parameter
-    }
-    ```
-  - [ ] フィールド情報の構造体
-    ```go
-    type Field struct {
-        Name       string
-        Type       string
-        Doc        string
-        IsExported bool
-    }
-    ```
-  - [ ] パラメータ情報の構造体
-    ```go
-    type Parameter struct {
-        Name string
-        Type string
-    }
-    ```
-  - [ ] 定数情報の構造体
-    ```go
-    type Constant struct {
-        Name  string
-        Type  string
-        Value string
-        Doc   string
-    }
-    ```
-  - [ ] 変数情報の構造体
-    ```go
-    type Variable struct {
-        Name string
-        Type string
-        Doc  string
-    }
-    ```
+  - [ ] MCPツールのリクエストパラメータを表す構造体や、レスポンス整形用の補助的な構造体を定義する
+  ```go
+  // 例:
+  // type InspectPackageParams struct {
+  //     PackageName     string `json:"packageName"`
+  //     IncludeComments bool   `json:"includeComments"`
+  // }
+  // type FormattedDoc struct { ... }
+  ```
 
 ### 2.7 レスポンス設計
 - [ ] 各ツールのレスポンス形式の定義
@@ -538,9 +371,9 @@
 2. [x] `cmd/mcpgen/main.go`の実装
 3. [x] 基本的なツールの定義
 4. [x] コード生成の実行
-5. [ ] `internal/model/model.go`の実装
-6. [ ] `internal/parser/parser.go`の実装
-7. [ ] `internal/handler/handler.go`の実装
-8. [ ] `cmd/server/main.go`の実装
+5. [ ] `internal/model/model.go` の実装 (MCPパラメータ/レスポンス整形用構造体)
+6. [x] `internal/parser/parser.go`の実装
+7. [x] `internal/handler/handler.go`の実装 (基本実装)
+8. [x] `cmd/server/main.go`の実装
 9. [ ] テストの実装
 10. [ ] ドキュメントの整備
