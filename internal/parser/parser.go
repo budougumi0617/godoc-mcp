@@ -126,7 +126,7 @@ func (p *Parser) GetStructInfo(pkgPath, structName string) (*StructInfo, error) 
 	// 構造体情報を構築
 	info := &StructInfo{
 		Name:    structName,
-		Comment: getComment(pkg, obj),
+		Comment: GetComment(pkg, obj),
 		Fields:  make([]Field, 0, structType.NumFields()),
 		Methods: make([]Method, 0),
 	}
@@ -137,7 +137,7 @@ func (p *Parser) GetStructInfo(pkgPath, structName string) (*StructInfo, error) 
 		info.Fields = append(info.Fields, Field{
 			Name:       field.Name(),
 			Type:       field.Type().String(),
-			Comment:    getComment(pkg, field),
+			Comment:    GetComment(pkg, field),
 			IsExported: field.Exported(),
 		})
 	}
@@ -148,7 +148,7 @@ func (p *Parser) GetStructInfo(pkgPath, structName string) (*StructInfo, error) 
 		info.Methods = append(info.Methods, Method{
 			Name:      method.Name(),
 			Signature: method.Type().String(),
-			Comment:   getComment(pkg, method),
+			Comment:   GetComment(pkg, method),
 		})
 	}
 
@@ -194,12 +194,12 @@ func (p *Parser) GetFuncInfo(pkgPath, funcName string) (*FuncInfo, error) {
 	info := &FuncInfo{
 		Name:      funcName,
 		Signature: fn.Type().String(),
-		Comment:   getComment(pkg, obj),
+		Comment:   GetComment(pkg, obj),
 		Examples:  make([]Example, 0),
 	}
 
 	// 例を取得
-	info.Examples = getExamples(pkg, funcName)
+	info.Examples = GetExamples(pkg, funcName)
 
 	return info, nil
 }
@@ -242,12 +242,12 @@ func (p *Parser) GetMethodInfo(pkgPath, structName, methodName string) (*Method,
 	info := &Method{
 		Name:      methodName,
 		Signature: method.Type().String(),
-		Comment:   getComment(pkg, method),
+		Comment:   GetComment(pkg, method),
 		Examples:  make([]Example, 0),
 	}
 
 	// 例を取得
-	info.Examples = getExamples(pkg, methodName)
+	info.Examples = GetExamples(pkg, methodName)
 
 	return info, nil
 }
@@ -291,7 +291,7 @@ func (p *Parser) GetConstAndVarInfo(pkgPath string) ([]ConstInfo, []VarInfo, err
 				Name:    name,
 				Type:    constObj.Type().String(),
 				Value:   constObj.Val().String(),
-				Comment: getComment(pkg, obj),
+				Comment: GetComment(pkg, obj),
 			})
 		}
 	}
@@ -309,7 +309,7 @@ func (p *Parser) GetConstAndVarInfo(pkgPath string) ([]ConstInfo, []VarInfo, err
 			variables = append(variables, VarInfo{
 				Name:    name,
 				Type:    varObj.Type().String(),
-				Comment: getComment(pkg, obj),
+				Comment: GetComment(pkg, obj),
 			})
 		}
 	}
@@ -317,8 +317,8 @@ func (p *Parser) GetConstAndVarInfo(pkgPath string) ([]ConstInfo, []VarInfo, err
 	return constants, variables, nil
 }
 
-// getExamples は、指定された関数の例を取得します。
-func getExamples(pkg *packages.Package, funcName string) []Example {
+// GetExamples は、指定された関数の例を取得します。
+func GetExamples(pkg *packages.Package, funcName string) []Example {
 	var examples []Example
 
 	// パッケージ内のASTノードを検索
@@ -347,7 +347,7 @@ func getExamples(pkg *packages.Package, funcName string) []Example {
 
 			// 例のコードを取得
 			if funcDecl.Body != nil {
-				example.Code = getNodeString(pkg.Fset, funcDecl.Body)
+				example.Code = GetNodeString(pkg.Fset, funcDecl.Body)
 			}
 
 			// 例の出力を取得
@@ -378,7 +378,7 @@ func getNodeString(fset *token.FileSet, node ast.Node) string {
 }
 
 // getComment は、指定されたオブジェクトのコメントを取得します。
-func getComment(pkg *packages.Package, obj types.Object) string {
+func GetComment(pkg *packages.Package, obj types.Object) string {
 	var comment string
 
 	// パッケージ内のASTノードを検索
@@ -432,4 +432,13 @@ func getComment(pkg *packages.Package, obj types.Object) string {
 
 	// コメントの前後の空白を削除
 	return strings.TrimSpace(comment)
+}
+
+// GetNodeString は、指定されたノードの文字列表現を取得します。
+func GetNodeString(fset *token.FileSet, node ast.Node) string {
+	var buf strings.Builder
+	if err := format.Node(&buf, fset, node); err != nil {
+		return ""
+	}
+	return buf.String()
 }

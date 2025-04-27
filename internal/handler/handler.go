@@ -3,9 +3,11 @@ package handler
 import (
 	"context"
 	"fmt"
+	"go/types"
 	"strings"
 
 	godoc "github.com/budougumi0617/godoc-mcp"
+	"github.com/budougumi0617/godoc-mcp/internal/model"
 	"github.com/budougumi0617/godoc-mcp/internal/parser"
 	mcp "github.com/ktr0731/go-mcp"
 )
@@ -33,17 +35,22 @@ func (h *ToolHandler) HandleToolListPackages(ctx context.Context, req *godoc.Too
 		}, nil
 	}
 
-	var packageNames []string
+	var packages []model.PackageInfo
 	for _, p := range pkgs {
-		packageNames = append(packageNames, p.PkgPath)
+		// パッケージのコメントを取得（現時点では空文字を使用）
+		packages = append(packages, model.PackageInfo{
+			Name:       p.Name,
+			ImportPath: p.PkgPath,
+			Comment:    "", // パッケージコメントは後で適切な方法で取得する
+		})
 	}
 
-	// TODO: 適切なフォーマットを実装する
-	responseText := fmt.Sprintf("ロードされたパッケージ:\n- %s", strings.Join(packageNames, "\n- "))
+	// マークダウン形式でフォーマット
+	mdContent := model.FormatPackageListMarkdown(packages)
 
 	return &mcp.CallToolResult{
 		Content: []mcp.CallToolContent{
-			mcp.TextContent{Text: responseText},
+			mcp.TextContent{Text: mdContent},
 		},
 	}, nil
 }
@@ -55,87 +62,198 @@ func (h *ToolHandler) HandleToolInspectPackage(ctx context.Context, req *godoc.T
 		return nil, fmt.Errorf("パッケージの取得に失敗しました: %w", err)
 	}
 
-	// TODO: パッケージの構造体、メソッド、関数の情報を抽出する
-	responseText := fmt.Sprintf("パッケージ '%s' の情報:\n", pkg.PkgPath)
-	responseText += fmt.Sprintf("パッケージ名: %s\n", pkg.Name)
-	responseText += "構造体、メソッド、関数のリスト（プレースホルダー）"
+	// パッケージ情報を作成
+	pkgInfo := model.PackageInfo{
+		Name:       pkg.Name,
+		ImportPath: pkg.PkgPath,
+		Comment:    "", // パッケージコメントは後で適切な方法で取得する
+	}
+
+	// 構造体、関数、メソッドの情報を収集
+	scope := pkg.Types.Scope()
+	var structs []model.StructSummary
+	var funcs []model.FuncSummary
+	var methods []model.MethodSummary
+
+	for _, name := range scope.Names() {
+		obj := scope.Lookup(name)
+		if !obj.Exported() {
+			continue
+		}
+
+		switch obj := obj.(type) {
+		case *types.TypeName:
+			// 型定義を取得
+			if _, ok := obj.Type().Underlying().(*types.Struct); ok {
+				structs = append(structs, model.StructSummary{
+					Name:    obj.Name(),
+					Comment: parser.GetComment(pkg, obj), // parserパッケージの公開された関数を使用
+				})
+			}
+		case *types.Func:
+			sig, ok := obj.Type().(*types.Signature)
+			if !ok {
+				continue
+			}
+
+			// メソッドの場合（レシーバーがある）
+			if sig.Recv() != nil {
+				recvType := sig.Recv().Type().String()
+				// ポインタ型の場合は*を削除
+				if strings.HasPrefix(recvType, "*") {
+					recvType = recvType[1:]
+				}
+				methods = append(methods, model.MethodSummary{
+					ReceiverType: recvType,
+					Name:         obj.Name(),
+					Comment:      parser.GetComment(pkg, obj), // parserパッケージの公開された関数を使用
+				})
+			} else {
+				// 関数の場合
+				funcs = append(funcs, model.FuncSummary{
+					Name:    obj.Name(),
+					Comment: parser.GetComment(pkg, obj), // parserパッケージの公開された関数を使用
+				})
+			}
+		}
+	}
+
+	// マークダウン形式でフォーマット
+	mdContent := model.FormatPackageInspectionMarkdown(pkgInfo, structs, funcs, methods, req.IncludeComments)
 
 	return &mcp.CallToolResult{
 		Content: []mcp.CallToolContent{
-			mcp.TextContent{Text: responseText},
+			mcp.TextContent{Text: mdContent},
 		},
 	}, nil
 }
 
 // HandleToolGetDocStruct は、指定された構造体に関する情報を返します。
 func (h *ToolHandler) HandleToolGetDocStruct(ctx context.Context, req *godoc.ToolGetDocStructRequest) (*mcp.CallToolResult, error) {
-	pkg, err := h.parser.GetPackage(req.PackageName)
+	structInfo, err := h.parser.GetStructInfo(req.PackageName, req.StructName)
 	if err != nil {
-		return nil, fmt.Errorf("パッケージの取得に失敗しました: %w", err)
+		return nil, fmt.Errorf("構造体情報の取得に失敗しました: %w", err)
 	}
 
-	// TODO: 指定された構造体の情報を抽出する
-	responseText := fmt.Sprintf("パッケージ '%s' の構造体 '%s' の情報:\n", pkg.PkgPath, req.StructName)
-	responseText += "構造体の詳細情報（プレースホルダー）"
+	// フィールドとメソッドの情報を変換
+	var fields []model.FieldDoc
+	var methods []model.MethodDoc
+
+	for _, f := range structInfo.Fields {
+		fields = append(fields, model.FieldDoc{
+			Name:       f.Name,
+			Type:       f.Type,
+			Comment:    f.Comment,
+			IsExported: f.IsExported,
+		})
+	}
+
+	for _, m := range structInfo.Methods {
+		methods = append(methods, model.MethodDoc{
+			Name:      m.Name,
+			Signature: m.Signature,
+			Comment:   m.Comment,
+		})
+	}
+
+	// マークダウン形式でフォーマット
+	mdContent := model.FormatStructDocMarkdown(structInfo.Name, structInfo.Comment, fields, methods)
 
 	return &mcp.CallToolResult{
 		Content: []mcp.CallToolContent{
-			mcp.TextContent{Text: responseText},
+			mcp.TextContent{Text: mdContent},
 		},
 	}, nil
 }
 
 // HandleToolGetDocFunc は、指定された関数に関する情報を返します。
 func (h *ToolHandler) HandleToolGetDocFunc(ctx context.Context, req *godoc.ToolGetDocFuncRequest) (*mcp.CallToolResult, error) {
-	pkg, err := h.parser.GetPackage(req.PackageName)
+	funcInfo, err := h.parser.GetFuncInfo(req.PackageName, req.FuncName)
 	if err != nil {
-		return nil, fmt.Errorf("パッケージの取得に失敗しました: %w", err)
+		return nil, fmt.Errorf("関数情報の取得に失敗しました: %w", err)
 	}
 
-	// TODO: 指定された関数の情報を抽出する
-	responseText := fmt.Sprintf("パッケージ '%s' の関数 '%s' の情報:\n", pkg.PkgPath, req.FuncName)
-	responseText += "関数の詳細情報（プレースホルダー）"
+	// 例を変換
+	var examples []model.Example
+	for _, e := range funcInfo.Examples {
+		examples = append(examples, model.Example{
+			Name:   e.Name,
+			Code:   e.Code,
+			Output: e.Output,
+		})
+	}
+
+	// マークダウン形式でフォーマット
+	mdContent := model.FormatFuncDocMarkdown(funcInfo.Name, funcInfo.Signature, funcInfo.Comment, examples)
 
 	return &mcp.CallToolResult{
 		Content: []mcp.CallToolContent{
-			mcp.TextContent{Text: responseText},
+			mcp.TextContent{Text: mdContent},
 		},
 	}, nil
 }
 
 // HandleToolGetDocMethod は、指定された構造体のメソッドに関する情報を返します。
 func (h *ToolHandler) HandleToolGetDocMethod(ctx context.Context, req *godoc.ToolGetDocMethodRequest) (*mcp.CallToolResult, error) {
-	pkg, err := h.parser.GetPackage(req.PackageName)
+	methodInfo, err := h.parser.GetMethodInfo(req.PackageName, req.StructName, req.MethodName)
 	if err != nil {
-		return nil, fmt.Errorf("パッケージの取得に失敗しました: %w", err)
+		return nil, fmt.Errorf("メソッド情報の取得に失敗しました: %w", err)
 	}
 
-	// TODO: 指定された構造体のメソッドの情報を抽出する
-	responseText := fmt.Sprintf("パッケージ '%s' の構造体 '%s' のメソッド '%s' の情報:\n",
-		pkg.PkgPath, req.StructName, req.MethodName)
-	responseText += "メソッドの詳細情報（プレースホルダー）"
+	// 例を変換
+	var examples []model.Example
+	for _, e := range methodInfo.Examples {
+		examples = append(examples, model.Example{
+			Name:   e.Name,
+			Code:   e.Code,
+			Output: e.Output,
+		})
+	}
+
+	// マークダウン形式でフォーマット
+	mdContent := model.FormatMethodDocMarkdown(req.StructName, methodInfo.Name, methodInfo.Signature, methodInfo.Comment, examples)
 
 	return &mcp.CallToolResult{
 		Content: []mcp.CallToolContent{
-			mcp.TextContent{Text: responseText},
+			mcp.TextContent{Text: mdContent},
 		},
 	}, nil
 }
 
 // HandleToolGetDocConstAndVar は、指定されたパッケージの定数と変数に関する情報を返します。
 func (h *ToolHandler) HandleToolGetDocConstAndVar(ctx context.Context, req *godoc.ToolGetDocConstAndVarRequest) (*mcp.CallToolResult, error) {
-	pkg, err := h.parser.GetPackage(req.PackageName)
+	constInfos, varInfos, err := h.parser.GetConstAndVarInfo(req.PackageName)
 	if err != nil {
-		return nil, fmt.Errorf("パッケージの取得に失敗しました: %w", err)
+		return nil, fmt.Errorf("定数と変数の情報の取得に失敗しました: %w", err)
 	}
 
-	// TODO: パッケージの定数と変数の情報を抽出する
-	responseText := fmt.Sprintf("パッケージ '%s' の定数と変数の情報:\n", pkg.PkgPath)
-	responseText += "定数と変数のリスト（プレースホルダー）"
+	// 定数と変数の情報を変換
+	var constants []model.ConstDoc
+	var variables []model.VarDoc
+
+	for _, c := range constInfos {
+		constants = append(constants, model.ConstDoc{
+			Name:    c.Name,
+			Type:    c.Type,
+			Value:   c.Value,
+			Comment: c.Comment,
+		})
+	}
+
+	for _, v := range varInfos {
+		variables = append(variables, model.VarDoc{
+			Name:    v.Name,
+			Type:    v.Type,
+			Comment: v.Comment,
+		})
+	}
+
+	// マークダウン形式でフォーマット
+	mdContent := model.FormatConstAndVarDocMarkdown(constants, variables)
 
 	return &mcp.CallToolResult{
 		Content: []mcp.CallToolContent{
-			mcp.TextContent{Text: responseText},
+			mcp.TextContent{Text: mdContent},
 		},
 	}, nil
 }
