@@ -8,10 +8,6 @@ import (
 	godoc "github.com/budougumi0617/godoc-mcp"
 	"github.com/budougumi0617/godoc-mcp/internal/parser"
 	mcp "github.com/ktr0731/go-mcp"
-
-	// 型情報のためにインポート
-
-	_ "golang.org/x/tools/go/packages"
 )
 
 // ToolHandler は、MCPツールリクエストを処理するハンドラー構造体です。
