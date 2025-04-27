@@ -37,11 +37,11 @@ func (h *ToolHandler) HandleToolListPackages(ctx context.Context, req *godoc.Too
 
 	var packages []model.PackageInfo
 	for _, p := range pkgs {
-		// パッケージのコメントを取得（現時点では空文字を使用）
+		// パッケージのコメントを取得
 		packages = append(packages, model.PackageInfo{
 			Name:       p.Name,
 			ImportPath: p.PkgPath,
-			Comment:    "", // パッケージコメントは後で適切な方法で取得する
+			Comment:    parser.GetPackageComment(p),
 		})
 	}
 
@@ -66,7 +66,7 @@ func (h *ToolHandler) HandleToolInspectPackage(ctx context.Context, req *godoc.T
 	pkgInfo := model.PackageInfo{
 		Name:       pkg.Name,
 		ImportPath: pkg.PkgPath,
-		Comment:    "", // パッケージコメントは後で適切な方法で取得する
+		Comment:    parser.GetPackageComment(pkg),
 	}
 
 	// 構造体、関数、メソッドの情報を収集

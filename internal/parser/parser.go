@@ -442,3 +442,23 @@ func GetNodeString(fset *token.FileSet, node ast.Node) string {
 	}
 	return buf.String()
 }
+
+// GetPackageComment はパッケージのコメントを取得します。
+// パッケージコメントは通常、パッケージ宣言の前にあるコメントブロックです。
+func GetPackageComment(pkg *packages.Package) string {
+	if pkg == nil || len(pkg.Syntax) == 0 {
+		return ""
+	}
+
+	var comment string
+	// 各ファイルのパッケージコメントを検索
+	for _, file := range pkg.Syntax {
+		if file.Doc != nil && file.Doc.Text() != "" {
+			// 複数のファイルにパッケージコメントがある場合は、最初の非空のコメントを使用
+			comment = file.Doc.Text()
+			break
+		}
+	}
+
+	return strings.TrimSpace(comment)
+}
