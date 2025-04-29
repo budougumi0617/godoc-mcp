@@ -1,0 +1,65 @@
+name: tag-and-release
+
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  tagpr:
+    runs-on: ubuntu-latest
+    outputs:
+      tagpr-tag: ${{ steps.run-tagpr.outputs.tag }}
+    steps:
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
+      - name: Check out source code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+      - id: run-tagpr
+        name: Run tagpr
+        uses: Songmu/tagpr@35daec35e8e3172806c763d8f196e6434fd44fbd # v1.5.2
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+  goreleaser:
+    needs: tagpr
+    if: needs.tagpr.outputs.tagpr-tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
+          owner: "budougumi0617"
+          repositories: |
+            godoc-mcp
+            homebrew-tap
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+      - name: Set up Go
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@9c156ee8a17a598857849441385a2041ef570552 # v6.3.0
+        with:
+          # either 'goreleaser' (default) or 'goreleaser-pro'
+          distribution: goreleaser
+          # 'latest', 'nightly', or a semver
+          version: "latest"
+          args: release --clean
+        env:
+          # need to access other repository for brew-tap
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

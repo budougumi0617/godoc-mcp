@@ -1,0 +1,71 @@
+version: 2
+
+before:
+  hooks:
+    - go mod download
+    - go mod tidy
+
+builds:
+  - id: godoc-mcp-darwin
+    ldflags:
+      - -s -w -X main.Version={{.Version}} -X main.Revision={{.ShortCommit}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/server/main.go
+  - id: godoc-mcp-linux
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/server/main.go
+  - id: godoc-mcp-windows
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+    main: ./cmd/godoc-mcp/main.go
+
+archives:
+  - format: "tar.gz"
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - CHANGELOG.md
+      - LICENSE
+      - README.md
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+brews:
+  - name: godoc-mcp
+    url_template: "https://github.com/budougumi0617/godoc-mcp/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    repository:
+      owner: budougumi0617
+      name: homebrew-tap
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    commit_author:
+      name: "github-actions[bot]"
+      email: "github-actions[bot]@users.noreply.github.com"
+    homepage: "https://github.com/budougumi0617/godoc-mcp"
+      description: "Insert function segments into any function/method for Newrelic APM."
+      license: "MIT"
+    install: |
+      bin.install "godoc-mcp"
+    test: |
+      system "#{bin}/godoc-mcp -h"
