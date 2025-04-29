@@ -14,17 +14,17 @@ func TestGetRootDir(t *testing.T) {
 		envRootDir string
 		want       string
 	}{
-		"コマンドライン引数が優先": {
+		"Command line argument takes precedence": {
 			cmdRootDir: "/path/to/root",
 			envRootDir: "/path/to/env",
 			want:       "/path/to/root",
 		},
-		"環境変数が使用される": {
+		"Environment variable is used": {
 			cmdRootDir: "",
 			envRootDir: "/path/to/env",
 			want:       "/path/to/env",
 		},
-		"デフォルト値が使用される": {
+		"Default value is used": {
 			cmdRootDir: "",
 			envRootDir: "",
 			want:       ".",
@@ -32,11 +32,10 @@ func TestGetRootDir(t *testing.T) {
 	}
 
 	for name, tt := range tests {
-		tt := tt
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			// 環境変数の設定
+			// Set environment variable
 			if tt.envRootDir != "" {
 				os.Setenv(EnvRootDir, tt.envRootDir)
 				defer os.Unsetenv(EnvRootDir)
@@ -58,17 +57,17 @@ func TestGetPkgDir(t *testing.T) {
 		envPkgDir string
 		want      string
 	}{
-		"コマンドライン引数が優先": {
+		"Command line argument takes precedence": {
 			cmdPkgDir: "/path/to/pkg",
 			envPkgDir: "/path/to/env/pkg",
 			want:      "/path/to/pkg",
 		},
-		"環境変数が使用される": {
+		"Environment variable is used": {
 			cmdPkgDir: "",
 			envPkgDir: "/path/to/env/pkg",
 			want:      "/path/to/env/pkg",
 		},
-		"空文字列が返される": {
+		"Empty string is returned": {
 			cmdPkgDir: "",
 			envPkgDir: "",
 			want:      "",
@@ -76,11 +75,10 @@ func TestGetPkgDir(t *testing.T) {
 	}
 
 	for name, tt := range tests {
-		tt := tt
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			// 環境変数の設定
+			// Set environment variable
 			if tt.envPkgDir != "" {
 				os.Setenv(EnvPkgDir, tt.envPkgDir)
 				defer os.Unsetenv(EnvPkgDir)
@@ -101,18 +99,17 @@ func TestGetAbsPath(t *testing.T) {
 		path string
 		want string
 	}{
-		"絶対パスはそのまま返される": {
+		"Absolute path is returned as is": {
 			path: "/absolute/path",
 			want: "/absolute/path",
 		},
-		"相対パスは絶対パスに変換される": {
+		"Relative path is converted to absolute path": {
 			path: "relative/path",
 			want: filepath.Join(t.TempDir(), "relative/path"),
 		},
 	}
 
 	for name, tt := range tests {
-		tt := tt
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

@@ -11,14 +11,14 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-// Parser は、ロードしたパッケージ情報を保持する構造体です。
+// Parser is a structure that holds loaded package information
 type Parser struct {
 	pkgs map[string]*packages.Package
 }
 
-// New は、指定されたディレクトリからGoパッケージをロードし、Parserインスタンスを作成します。
-// rootDirは基点となるディレクトリ、pkgDirはロード対象のパターンを指定します。
-// pkgDirが空の場合は、"./..."がパターンとして使用されます。
+// New creates a Parser instance by loading Go packages from the specified directory.
+// rootDir is the base directory, and pkgDir specifies the pattern to load.
+// If pkgDir is empty, "./..." is used as the pattern.
 func New(rootDir string, pkgDir string) (*Parser, error) {
 	patterns := []string{"./..."}
 	if pkgDir != "" {
@@ -47,7 +47,7 @@ func New(rootDir string, pkgDir string) (*Parser, error) {
 		pkgs: make(map[string]*packages.Package),
 	}
 
-	// パッケージをマップに格納
+	// Store packages in the map
 	for _, pkg := range pkgs {
 		parser.pkgs[pkg.PkgPath] = pkg
 	}
@@ -55,7 +55,7 @@ func New(rootDir string, pkgDir string) (*Parser, error) {
 	return parser, nil
 }
 
-// GetAllPackages は、ロードされたすべてのパッケージを返します。
+// GetAllPackages returns all loaded packages
 func (p *Parser) GetAllPackages() []*packages.Package {
 	result := make([]*packages.Package, 0, len(p.pkgs))
 	for _, pkg := range p.pkgs {
@@ -64,8 +64,8 @@ func (p *Parser) GetAllPackages() []*packages.Package {
 	return result
 }
 
-// GetPackage は、指定されたパッケージパスのパッケージを返します。
-// パッケージが見つからない場合はエラーを返します。
+// GetPackage returns a package by its package path.
+// Returns an error if the package is not found.
 func (p *Parser) GetPackage(pkgPath string) (*packages.Package, error) {
 	pkg, ok := p.pkgs[pkgPath]
 	if !ok {
@@ -74,45 +74,45 @@ func (p *Parser) GetPackage(pkgPath string) (*packages.Package, error) {
 	return pkg, nil
 }
 
-// StructInfo は、構造体の情報を表す構造体です。
+// StructInfo represents information about a struct
 type StructInfo struct {
-	Name    string   // 構造体名
-	Comment string   // 構造体のコメント
-	Fields  []Field  // フィールドのリスト
-	Methods []Method // メソッドのリスト
+	Name    string   // Struct name
+	Comment string   // Struct comment
+	Fields  []Field  // List of fields
+	Methods []Method // List of methods
 }
 
-// Field は、構造体のフィールド情報を表す構造体です。
+// Field represents information about a struct field
 type Field struct {
-	Name       string // フィールド名
-	Type       string // フィールドの型
-	Comment    string // フィールドのコメント
-	IsExported bool   // エクスポートされているかどうか
+	Name       string // Field name
+	Type       string // Field type
+	Comment    string // Field comment
+	IsExported bool   // Whether the field is exported
 }
 
-// Method は、構造体のメソッド情報を表す構造体です。
+// Method represents information about a struct method
 type Method struct {
-	Name      string    // メソッド名
-	Signature string    // メソッドのシグネチャ
-	Comment   string    // メソッドのコメント
-	Examples  []Example // メソッドの例
+	Name      string    // Method name
+	Signature string    // Method signature
+	Comment   string    // Method comment
+	Examples  []Example // Method examples
 }
 
-// GetStructInfo は、指定されたパッケージ内の構造体情報を返します。
+// GetStructInfo returns information about a struct in the specified package
 func (p *Parser) GetStructInfo(pkgPath, structName string) (*StructInfo, error) {
 	pkg, err := p.GetPackage(pkgPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// パッケージ内の型情報を取得
+	// Get type information from the package
 	scope := pkg.Types.Scope()
 	obj := scope.Lookup(structName)
 	if obj == nil {
 		return nil, fmt.Errorf("struct not found: %s in package %s", structName, pkgPath)
 	}
 
-	// 型が構造体かどうかを確認
+	// Check if the type is a struct
 	named, ok := obj.Type().(*types.Named)
 	if !ok {
 		return nil, fmt.Errorf("not a struct: %s in package %s", structName, pkgPath)
@@ -123,7 +123,7 @@ func (p *Parser) GetStructInfo(pkgPath, structName string) (*StructInfo, error) 
 		return nil, fmt.Errorf("not a struct: %s in package %s", structName, pkgPath)
 	}
 
-	// 構造体情報を構築
+	// Build struct information
 	info := &StructInfo{
 		Name:    structName,
 		Comment: GetComment(pkg, obj),
@@ -131,7 +131,7 @@ func (p *Parser) GetStructInfo(pkgPath, structName string) (*StructInfo, error) 
 		Methods: make([]Method, 0),
 	}
 
-	// フィールド情報を取得
+	// Get field information
 	for i := 0; i < structType.NumFields(); i++ {
 		field := structType.Field(i)
 		info.Fields = append(info.Fields, Field{
@@ -142,7 +142,7 @@ func (p *Parser) GetStructInfo(pkgPath, structName string) (*StructInfo, error) 
 		})
 	}
 
-	// メソッド情報を取得
+	// Get method information
 	for i := 0; i < named.NumMethods(); i++ {
 		method := named.Method(i)
 		info.Methods = append(info.Methods, Method{
@@ -155,42 +155,42 @@ func (p *Parser) GetStructInfo(pkgPath, structName string) (*StructInfo, error) 
 	return info, nil
 }
 
-// FuncInfo は、関数の情報を表す構造体です。
+// FuncInfo represents information about a function
 type FuncInfo struct {
-	Name      string    // 関数名
-	Signature string    // 関数のシグネチャ
-	Comment   string    // 関数のコメント
-	Examples  []Example // 関数の例
+	Name      string    // Function name
+	Signature string    // Function signature
+	Comment   string    // Function comment
+	Examples  []Example // Function examples
 }
 
-// Example は、関数の例を表す構造体です。
+// Example represents an example for a function
 type Example struct {
-	Name   string // 例の名前
-	Code   string // 例のコード
-	Output string // 例の出力
+	Name   string // Example name
+	Code   string // Example code
+	Output string // Example output
 }
 
-// GetFuncInfo は、指定されたパッケージ内の関数情報を返します。
+// GetFuncInfo returns information about a function in the specified package
 func (p *Parser) GetFuncInfo(pkgPath, funcName string) (*FuncInfo, error) {
 	pkg, err := p.GetPackage(pkgPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// パッケージ内の型情報を取得
+	// Get type information from the package
 	scope := pkg.Types.Scope()
 	obj := scope.Lookup(funcName)
 	if obj == nil {
 		return nil, fmt.Errorf("function not found: %s in package %s", funcName, pkgPath)
 	}
 
-	// 型が関数かどうかを確認
+	// Check if the type is a function
 	fn, ok := obj.(*types.Func)
 	if !ok {
 		return nil, fmt.Errorf("not a function: %s in package %s", funcName, pkgPath)
 	}
 
-	// 関数情報を構築
+	// Build function information
 	info := &FuncInfo{
 		Name:      funcName,
 		Signature: fn.Type().String(),
@@ -198,33 +198,33 @@ func (p *Parser) GetFuncInfo(pkgPath, funcName string) (*FuncInfo, error) {
 		Examples:  make([]Example, 0),
 	}
 
-	// 例を取得
-	info.Examples = GetExamples(pkg, funcName)
+	// Get examples
+	info.Examples = getExamples(pkg, funcName)
 
 	return info, nil
 }
 
-// GetMethodInfo は、指定されたパッケージ内のメソッド情報を返します。
+// GetMethodInfo returns information about a method in the specified package
 func (p *Parser) GetMethodInfo(pkgPath, structName, methodName string) (*Method, error) {
 	pkg, err := p.GetPackage(pkgPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// パッケージ内の型情報を取得
+	// Get type information from the package
 	scope := pkg.Types.Scope()
 	obj := scope.Lookup(structName)
 	if obj == nil {
 		return nil, fmt.Errorf("struct not found: %s in package %s", structName, pkgPath)
 	}
 
-	// 型が構造体かどうかを確認
+	// Check if the type is a struct
 	named, ok := obj.Type().(*types.Named)
 	if !ok {
 		return nil, fmt.Errorf("not a struct: %s in package %s", structName, pkgPath)
 	}
 
-	// メソッドを探す
+	// Find the method
 	var method *types.Func
 	for i := 0; i < named.NumMethods(); i++ {
 		m := named.Method(i)
@@ -238,7 +238,7 @@ func (p *Parser) GetMethodInfo(pkgPath, structName, methodName string) (*Method,
 		return nil, fmt.Errorf("method not found: %s.%s in package %s", structName, methodName, pkgPath)
 	}
 
-	// メソッド情報を構築
+	// Build method information
 	info := &Method{
 		Name:      methodName,
 		Signature: method.Type().String(),
@@ -246,38 +246,38 @@ func (p *Parser) GetMethodInfo(pkgPath, structName, methodName string) (*Method,
 		Examples:  make([]Example, 0),
 	}
 
-	// 例を取得
-	info.Examples = GetExamples(pkg, methodName)
+	// Get examples
+	info.Examples = getExamples(pkg, methodName)
 
 	return info, nil
 }
 
-// ConstInfo は、定数の情報を表す構造体です。
+// ConstInfo represents information about a constant
 type ConstInfo struct {
-	Name    string // 定数名
-	Type    string // 定数の型
-	Value   string // 定数の値
-	Comment string // 定数のコメント
+	Name    string // Constant name
+	Type    string // Constant type
+	Value   string // Constant value
+	Comment string // Constant comment
 }
 
-// VarInfo は、変数の情報を表す構造体です。
+// VarInfo represents information about a variable
 type VarInfo struct {
-	Name    string // 変数名
-	Type    string // 変数の型
-	Comment string // 変数のコメント
+	Name    string // Variable name
+	Type    string // Variable type
+	Comment string // Variable comment
 }
 
-// GetConstAndVarInfo は、指定されたパッケージ内の定数・変数情報を返します。
+// GetConstAndVarInfo returns information about constants and variables in the specified package
 func (p *Parser) GetConstAndVarInfo(pkgPath string) ([]ConstInfo, []VarInfo, error) {
 	pkg, err := p.GetPackage(pkgPath)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// パッケージ内の型情報を取得
+	// Get type information from the package
 	scope := pkg.Types.Scope()
 
-	// 定数情報を取得
+	// Get constant information
 	constants := make([]ConstInfo, 0)
 	for _, name := range scope.Names() {
 		obj := scope.Lookup(name)
@@ -285,7 +285,7 @@ func (p *Parser) GetConstAndVarInfo(pkgPath string) ([]ConstInfo, []VarInfo, err
 			continue
 		}
 
-		// 定数かどうかを確認
+		// Check if it's a constant
 		if constObj, ok := obj.(*types.Const); ok {
 			constants = append(constants, ConstInfo{
 				Name:    name,
@@ -296,7 +296,7 @@ func (p *Parser) GetConstAndVarInfo(pkgPath string) ([]ConstInfo, []VarInfo, err
 		}
 	}
 
-	// 変数情報を取得
+	// Get variable information
 	variables := make([]VarInfo, 0)
 	for _, name := range scope.Names() {
 		obj := scope.Lookup(name)
@@ -304,7 +304,7 @@ func (p *Parser) GetConstAndVarInfo(pkgPath string) ([]ConstInfo, []VarInfo, err
 			continue
 		}
 
-		// 変数かどうかを確認
+		// Check if it's a variable
 		if varObj, ok := obj.(*types.Var); ok {
 			variables = append(variables, VarInfo{
 				Name:    name,
@@ -317,40 +317,40 @@ func (p *Parser) GetConstAndVarInfo(pkgPath string) ([]ConstInfo, []VarInfo, err
 	return constants, variables, nil
 }
 
-// GetExamples は、指定された関数の例を取得します。
-func GetExamples(pkg *packages.Package, funcName string) []Example {
+// getExamples returns examples for a function
+func getExamples(pkg *packages.Package, funcName string) []Example {
 	var examples []Example
 
-	// パッケージ内のASTノードを検索
+	// Search AST nodes in the package
 	for _, file := range pkg.Syntax {
 		ast.Inspect(file, func(n ast.Node) bool {
-			// 関数宣言を探す
+			// Look for function declarations
 			funcDecl, ok := n.(*ast.FuncDecl)
 			if !ok {
 				return true
 			}
 
-			// 例の関数かどうかを確認
+			// Check if it's an example function
 			if !strings.HasPrefix(funcDecl.Name.Name, "Example") {
 				return true
 			}
 
-			// 対象の関数の例かどうかを確認
+			// Check if it's an example for the target function
 			if !strings.HasSuffix(funcDecl.Name.Name, funcName) {
 				return true
 			}
 
-			// 例の情報を取得
+			// Get example information
 			example := Example{
 				Name: funcDecl.Name.Name,
 			}
 
-			// 例のコードを取得
+			// Get example code
 			if funcDecl.Body != nil {
-				example.Code = GetNodeString(pkg.Fset, funcDecl.Body)
+				example.Code = getNodeString(pkg.Fset, funcDecl.Body)
 			}
 
-			// 例の出力を取得
+			// Get example output
 			if funcDecl.Doc != nil {
 				for _, comment := range funcDecl.Doc.List {
 					if strings.HasPrefix(comment.Text, "// Output:") {
@@ -368,7 +368,7 @@ func GetExamples(pkg *packages.Package, funcName string) []Example {
 	return examples
 }
 
-// getNodeString は、指定されたノードの文字列表現を取得します。
+// getNodeString returns the string representation of a node
 func getNodeString(fset *token.FileSet, node ast.Node) string {
 	var buf strings.Builder
 	if err := format.Node(&buf, fset, node); err != nil {
@@ -377,16 +377,16 @@ func getNodeString(fset *token.FileSet, node ast.Node) string {
 	return buf.String()
 }
 
-// getComment は、指定されたオブジェクトのコメントを取得します。
+// GetComment returns the comment for an object
 func GetComment(pkg *packages.Package, obj types.Object) string {
 	var comment string
 
-	// パッケージ内のASTノードを検索
+	// Search AST nodes in the package
 	for _, file := range pkg.Syntax {
 		ast.Inspect(file, func(n ast.Node) bool {
 			switch node := n.(type) {
 			case *ast.TypeSpec:
-				// 型宣言の場合
+				// For type declarations
 				if node.Name.Name == obj.Name() {
 					if node.Doc != nil {
 						comment = node.Doc.Text()
@@ -394,7 +394,7 @@ func GetComment(pkg *packages.Package, obj types.Object) string {
 					return false
 				}
 			case *ast.Field:
-				// フィールドの場合
+				// For fields
 				for _, name := range node.Names {
 					if name.Name == obj.Name() {
 						if node.Doc != nil {
@@ -406,7 +406,7 @@ func GetComment(pkg *packages.Package, obj types.Object) string {
 					}
 				}
 			case *ast.FuncDecl:
-				// メソッドの場合
+				// For methods
 				if node.Name.Name == obj.Name() {
 					if node.Doc != nil {
 						comment = node.Doc.Text()
@@ -414,7 +414,7 @@ func GetComment(pkg *packages.Package, obj types.Object) string {
 					return false
 				}
 			case *ast.ValueSpec:
-				// 定数・変数の場合
+				// For constants and variables
 				for _, name := range node.Names {
 					if name.Name == obj.Name() {
 						if node.Doc != nil {
@@ -430,31 +430,22 @@ func GetComment(pkg *packages.Package, obj types.Object) string {
 		})
 	}
 
-	// コメントの前後の空白を削除
+	// Trim whitespace from the comment
 	return strings.TrimSpace(comment)
 }
 
-// GetNodeString は、指定されたノードの文字列表現を取得します。
-func GetNodeString(fset *token.FileSet, node ast.Node) string {
-	var buf strings.Builder
-	if err := format.Node(&buf, fset, node); err != nil {
-		return ""
-	}
-	return buf.String()
-}
-
-// GetPackageComment はパッケージのコメントを取得します。
-// パッケージコメントは通常、パッケージ宣言の前にあるコメントブロックです。
+// GetPackageComment returns the package comment.
+// Package comments are typically comment blocks before the package declaration.
 func GetPackageComment(pkg *packages.Package) string {
 	if pkg == nil || len(pkg.Syntax) == 0 {
 		return ""
 	}
 
 	var comment string
-	// 各ファイルのパッケージコメントを検索
+	// Search for package comments in each file
 	for _, file := range pkg.Syntax {
 		if file.Doc != nil && file.Doc.Text() != "" {
-			// 複数のファイルにパッケージコメントがある場合は、最初の非空のコメントを使用
+			// If multiple files have package comments, use the first non-empty comment
 			comment = file.Doc.Text()
 			break
 		}

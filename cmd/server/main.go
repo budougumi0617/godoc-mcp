@@ -14,34 +14,34 @@ import (
 )
 
 func main() {
-	// コマンドライン引数のパース
-	rootDir := flag.String("root", "", "ディレクトリルートパス")
-	pkgDir := flag.String("pkg", "", "特定のパッケージディレクトリ（オプション）")
+	// Parse command line arguments
+	rootDir := flag.String("root", "", "Root directory path")
+	pkgDir := flag.String("pkg", "", "Specific package directory (optional)")
 	flag.Parse()
 
-	// 設定値の取得
+	// Get configuration values
 	rootPath := config.GetRootDir(*rootDir)
 	pkgPath := config.GetPkgDir(*pkgDir)
 
-	// パーサーの初期化
+	// Initialize parser
 	p, err := parser.New(rootPath, pkgPath)
 	if err != nil {
-		log.Fatalf("パーサーの初期化に失敗しました: %v", err)
+		log.Fatalf("Failed to initialize parser: %v", err)
 	}
 
-	// ツールハンドラーの初期化
+	// Initialize tool handler
 	toolHandler := handler.NewToolHandler(p)
 
-	// MCPハンドラーの作成
+	// Create MCP handler
 	mcpHandler := godoc.NewHandler(toolHandler)
 
-	// MCPサーバーの起動
+	// Start MCP server
 	ctx, listener, binder := mcp.NewStdioTransport(context.Background(), mcpHandler, nil)
 	srv, err := jsonrpc2.Serve(ctx, listener, binder)
 	if err != nil {
-		log.Fatalf("サーバーの起動に失敗しました: %v", err)
+		log.Fatalf("Failed to start server: %v", err)
 	}
 
-	// サーバー待機
+	// Wait for server
 	srv.Wait()
 }

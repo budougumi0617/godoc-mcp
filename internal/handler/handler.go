@@ -12,32 +12,32 @@ import (
 	mcp "github.com/ktr0731/go-mcp"
 )
 
-// ToolHandler は、MCPツールリクエストを処理するハンドラー構造体です。
+// ToolHandler is a handler structure that processes MCP tool requests.
 type ToolHandler struct {
 	parser *parser.Parser
 }
 
-// NewToolHandler は、新しいToolHandlerインスタンスを作成します。
+// NewToolHandler creates a new ToolHandler instance.
 func NewToolHandler(p *parser.Parser) *ToolHandler {
 	return &ToolHandler{
 		parser: p,
 	}
 }
 
-// HandleToolListPackages は、ロードされたすべてのパッケージのリストを返します。
+// HandleToolListPackages returns a list of all loaded packages.
 func (h *ToolHandler) HandleToolListPackages(ctx context.Context, req *godoc.ToolListPackagesRequest) (*mcp.CallToolResult, error) {
 	pkgs := h.parser.GetAllPackages()
 	if len(pkgs) == 0 {
 		return &mcp.CallToolResult{
 			Content: []mcp.CallToolContent{
-				mcp.TextContent{Text: "パッケージがロードされていません。"},
+				mcp.TextContent{Text: "No packages loaded."},
 			},
 		}, nil
 	}
 
 	var packages []model.PackageInfo
 	for _, p := range pkgs {
-		// パッケージのコメントを取得
+		// Get package comment
 		packages = append(packages, model.PackageInfo{
 			Name:       p.Name,
 			ImportPath: p.PkgPath,
@@ -45,7 +45,7 @@ func (h *ToolHandler) HandleToolListPackages(ctx context.Context, req *godoc.Too
 		})
 	}
 
-	// マークダウン形式でフォーマット
+	// Format in markdown
 	mdContent := model.FormatPackageListMarkdown(packages)
 
 	return &mcp.CallToolResult{
@@ -55,21 +55,21 @@ func (h *ToolHandler) HandleToolListPackages(ctx context.Context, req *godoc.Too
 	}, nil
 }
 
-// HandleToolInspectPackage は、指定されたパッケージの公開されている構造体、メソッド、関数をリストします。
+// HandleToolInspectPackage lists exported structs, methods, and functions in the specified package.
 func (h *ToolHandler) HandleToolInspectPackage(ctx context.Context, req *godoc.ToolInspectPackageRequest) (*mcp.CallToolResult, error) {
 	pkg, err := h.parser.GetPackage(req.PackageName)
 	if err != nil {
-		return nil, fmt.Errorf("パッケージの取得に失敗しました: %w", err)
+		return nil, fmt.Errorf("failed to get package: %w", err)
 	}
 
-	// パッケージ情報を作成
+	// Create package info
 	pkgInfo := model.PackageInfo{
 		Name:       pkg.Name,
 		ImportPath: pkg.PkgPath,
 		Comment:    parser.GetPackageComment(pkg),
 	}
 
-	// 構造体、関数、メソッドの情報を収集
+	// Collect struct, function, and method information
 	scope := pkg.Types.Scope()
 	var structs []model.StructSummary
 	var funcs []model.FuncSummary
@@ -83,11 +83,11 @@ func (h *ToolHandler) HandleToolInspectPackage(ctx context.Context, req *godoc.T
 
 		switch obj := obj.(type) {
 		case *types.TypeName:
-			// 型定義を取得
+			// Get type definition
 			if _, ok := obj.Type().Underlying().(*types.Struct); ok {
 				structs = append(structs, model.StructSummary{
 					Name:    obj.Name(),
-					Comment: parser.GetComment(pkg, obj), // parserパッケージの公開された関数を使用
+					Comment: parser.GetComment(pkg, obj), // Use public function from parser package
 				})
 			}
 		case *types.Func:
@@ -96,29 +96,27 @@ func (h *ToolHandler) HandleToolInspectPackage(ctx context.Context, req *godoc.T
 				continue
 			}
 
-			// メソッドの場合（レシーバーがある）
+			// For methods (with receiver)
 			if sig.Recv() != nil {
 				recvType := sig.Recv().Type().String()
-				// ポインタ型の場合は*を削除
-				if strings.HasPrefix(recvType, "*") {
-					recvType = recvType[1:]
-				}
+				// Remove * for pointer types
+				recvType = strings.TrimPrefix(recvType, "*")
 				methods = append(methods, model.MethodSummary{
 					ReceiverType: recvType,
 					Name:         obj.Name(),
-					Comment:      parser.GetComment(pkg, obj), // parserパッケージの公開された関数を使用
+					Comment:      parser.GetComment(pkg, obj), // Use public function from parser package
 				})
 			} else {
-				// 関数の場合
+				// For functions
 				funcs = append(funcs, model.FuncSummary{
 					Name:    obj.Name(),
-					Comment: parser.GetComment(pkg, obj), // parserパッケージの公開された関数を使用
+					Comment: parser.GetComment(pkg, obj), // Use public function from parser package
 				})
 			}
 		}
 	}
 
-	// マークダウン形式でフォーマット
+	// Format in markdown
 	mdContent := model.FormatPackageInspectionMarkdown(pkgInfo, structs, funcs, methods, req.IncludeComments)
 
 	return &mcp.CallToolResult{
@@ -128,14 +126,14 @@ func (h *ToolHandler) HandleToolInspectPackage(ctx context.Context, req *godoc.T
 	}, nil
 }
 
-// HandleToolGetDocStruct は、指定された構造体に関する情報を返します。
+// HandleToolGetDocStruct returns information about the specified struct.
 func (h *ToolHandler) HandleToolGetDocStruct(ctx context.Context, req *godoc.ToolGetDocStructRequest) (*mcp.CallToolResult, error) {
 	structInfo, err := h.parser.GetStructInfo(req.PackageName, req.StructName)
 	if err != nil {
-		return nil, fmt.Errorf("構造体情報の取得に失敗しました: %w", err)
+		return nil, fmt.Errorf("failed to get struct info: %w", err)
 	}
 
-	// フィールドとメソッドの情報を変換
+	// Convert field and method information
 	var fields []model.FieldDoc
 	var methods []model.MethodDoc
 
@@ -156,7 +154,7 @@ func (h *ToolHandler) HandleToolGetDocStruct(ctx context.Context, req *godoc.Too
 		})
 	}
 
-	// マークダウン形式でフォーマット
+	// Format in markdown
 	mdContent := model.FormatStructDocMarkdown(structInfo.Name, structInfo.Comment, fields, methods)
 
 	return &mcp.CallToolResult{
@@ -166,14 +164,14 @@ func (h *ToolHandler) HandleToolGetDocStruct(ctx context.Context, req *godoc.Too
 	}, nil
 }
 
-// HandleToolGetDocFunc は、指定された関数に関する情報を返します。
+// HandleToolGetDocFunc returns information about the specified function.
 func (h *ToolHandler) HandleToolGetDocFunc(ctx context.Context, req *godoc.ToolGetDocFuncRequest) (*mcp.CallToolResult, error) {
 	funcInfo, err := h.parser.GetFuncInfo(req.PackageName, req.FuncName)
 	if err != nil {
-		return nil, fmt.Errorf("関数情報の取得に失敗しました: %w", err)
+		return nil, fmt.Errorf("failed to get function info: %w", err)
 	}
 
-	// 例を変換
+	// Convert examples
 	var examples []model.Example
 	for _, e := range funcInfo.Examples {
 		examples = append(examples, model.Example{
@@ -183,7 +181,7 @@ func (h *ToolHandler) HandleToolGetDocFunc(ctx context.Context, req *godoc.ToolG
 		})
 	}
 
-	// マークダウン形式でフォーマット
+	// Format in markdown
 	mdContent := model.FormatFuncDocMarkdown(funcInfo.Name, funcInfo.Signature, funcInfo.Comment, examples)
 
 	return &mcp.CallToolResult{
@@ -193,14 +191,14 @@ func (h *ToolHandler) HandleToolGetDocFunc(ctx context.Context, req *godoc.ToolG
 	}, nil
 }
 
-// HandleToolGetDocMethod は、指定された構造体のメソッドに関する情報を返します。
+// HandleToolGetDocMethod returns information about the specified method of a struct.
 func (h *ToolHandler) HandleToolGetDocMethod(ctx context.Context, req *godoc.ToolGetDocMethodRequest) (*mcp.CallToolResult, error) {
 	methodInfo, err := h.parser.GetMethodInfo(req.PackageName, req.StructName, req.MethodName)
 	if err != nil {
-		return nil, fmt.Errorf("メソッド情報の取得に失敗しました: %w", err)
+		return nil, fmt.Errorf("failed to get method info: %w", err)
 	}
 
-	// 例を変換
+	// Convert examples
 	var examples []model.Example
 	for _, e := range methodInfo.Examples {
 		examples = append(examples, model.Example{
@@ -210,7 +208,7 @@ func (h *ToolHandler) HandleToolGetDocMethod(ctx context.Context, req *godoc.Too
 		})
 	}
 
-	// マークダウン形式でフォーマット
+	// Format in markdown
 	mdContent := model.FormatMethodDocMarkdown(req.StructName, methodInfo.Name, methodInfo.Signature, methodInfo.Comment, examples)
 
 	return &mcp.CallToolResult{
@@ -220,14 +218,14 @@ func (h *ToolHandler) HandleToolGetDocMethod(ctx context.Context, req *godoc.Too
 	}, nil
 }
 
-// HandleToolGetDocConstAndVar は、指定されたパッケージの定数と変数に関する情報を返します。
+// HandleToolGetDocConstAndVar returns information about constants and variables in the specified package.
 func (h *ToolHandler) HandleToolGetDocConstAndVar(ctx context.Context, req *godoc.ToolGetDocConstAndVarRequest) (*mcp.CallToolResult, error) {
 	constInfos, varInfos, err := h.parser.GetConstAndVarInfo(req.PackageName)
 	if err != nil {
-		return nil, fmt.Errorf("定数と変数の情報の取得に失敗しました: %w", err)
+		return nil, fmt.Errorf("failed to get constant and variable info: %w", err)
 	}
 
-	// 定数と変数の情報を変換
+	// Convert constant and variable information
 	var constants []model.ConstDoc
 	var variables []model.VarDoc
 
@@ -248,7 +246,7 @@ func (h *ToolHandler) HandleToolGetDocConstAndVar(ctx context.Context, req *godo
 		})
 	}
 
-	// マークダウン形式でフォーマット
+	// Format in markdown
 	mdContent := model.FormatConstAndVarDocMarkdown(constants, variables)
 
 	return &mcp.CallToolResult{

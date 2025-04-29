@@ -6,16 +6,16 @@ import (
 )
 
 const (
-	// 環境変数名
+	// Environment variable names
 	EnvRootDir = "GODOC_MCP_ROOT_DIR"
 	EnvPkgDir  = "GODOC_MCP_PKG_DIR"
 )
 
-// GetRootDir はディレクトリルートパスを取得します。
-// 優先順位:
-// 1. コマンドライン引数
-// 2. 環境変数
-// 3. カレントディレクトリ
+// GetRootDir returns the root directory path.
+// Priority order:
+// 1. Command line argument
+// 2. Environment variable
+// 3. Current directory
 func GetRootDir(cmdRootDir string) string {
 	if cmdRootDir != "" {
 		return cmdRootDir
@@ -23,7 +23,7 @@ func GetRootDir(cmdRootDir string) string {
 	if envRootDir := os.Getenv(EnvRootDir); envRootDir != "" {
 		return envRootDir
 	}
-	// カレントディレクトリを取得
+	// Get current directory
 	wd, err := os.Getwd()
 	if err != nil {
 		return "."
@@ -31,11 +31,11 @@ func GetRootDir(cmdRootDir string) string {
 	return wd
 }
 
-// GetPkgDir はパッケージディレクトリを取得します。
-// 優先順位:
-// 1. コマンドライン引数
-// 2. 環境変数
-// 3. 空文字列（指定なし）
+// GetPkgDir returns the package directory path.
+// Priority order:
+// 1. Command line argument
+// 2. Environment variable
+// 3. Empty string (no specification)
 func GetPkgDir(cmdPkgDir string) string {
 	if cmdPkgDir != "" {
 		return cmdPkgDir
@@ -43,7 +43,7 @@ func GetPkgDir(cmdPkgDir string) string {
 	return os.Getenv(EnvPkgDir)
 }
 
-// GetAbsPath は指定されたパスを絶対パスに変換します。
+// GetAbsPath converts the specified path to an absolute path.
 func GetAbsPath(path string) (string, error) {
 	if filepath.IsAbs(path) {
 		return path, nil
