@@ -74,8 +74,10 @@ go test ./...
 - golang.org/x/tools
 
 ## Environment Variables
-
+- `GOPATH`: Required by `golang.org/x/tools/go/packages`
+- `GOCACHE`: Required by `golang.org/x/tools/go/packages`
 - `GODOC_MCP_ROOT_DIR`: Root directory of the Go project to analyze
+
 
 ## License
 
