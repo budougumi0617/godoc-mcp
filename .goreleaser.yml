@@ -33,7 +33,7 @@ builds:
       - windows
     goarch:
       - amd64
-    main: ./cmd/godoc-mcp/main.go
+    main: ./cmd/server/main.go
 
 archives:
   - format: "tar.gz"
