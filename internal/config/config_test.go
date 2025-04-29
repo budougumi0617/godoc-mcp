@@ -49,49 +49,6 @@ func TestGetRootDir(t *testing.T) {
 	}
 }
 
-func TestGetPkgDir(t *testing.T) {
-	t.Parallel()
-
-	tests := map[string]struct {
-		cmdPkgDir string
-		envPkgDir string
-		want      string
-	}{
-		"Command line argument takes precedence": {
-			cmdPkgDir: "/path/to/pkg",
-			envPkgDir: "/path/to/env/pkg",
-			want:      "/path/to/pkg",
-		},
-		"Environment variable is used": {
-			cmdPkgDir: "",
-			envPkgDir: "/path/to/env/pkg",
-			want:      "/path/to/env/pkg",
-		},
-		"Empty string is returned": {
-			cmdPkgDir: "",
-			envPkgDir: "",
-			want:      "",
-		},
-	}
-
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			// Set environment variable
-			if tt.envPkgDir != "" {
-				os.Setenv(EnvPkgDir, tt.envPkgDir)
-				defer os.Unsetenv(EnvPkgDir)
-			}
-
-			got := GetPkgDir(tt.cmdPkgDir)
-			if got != tt.want {
-				t.Errorf("GetPkgDir() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestGetAbsPath(t *testing.T) {
 	t.Parallel()
 

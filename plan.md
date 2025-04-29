@@ -1,383 +1,178 @@
-# MCPサーバ実装計画（更新版）
+# pkgDir パラメータ削除リファクタリング計画
 
-## 1. 設計概要
+## 概要
 
-### 1.1 機能要件
-- ローカルディレクトリのGoモジュールのgodocをMCP経由でアクセス可能にする
-- 起動時のオプション
-  - ディレクトリルートパス（必須）
-  - 特定のパッケージディレクトリ（オプション）
-- 起動時にGoファイルを再帰的に読み込み、ドキュメント情報を保持
+現在の実装では、`rootDir`と`pkgDir`の両方を受け取っていますが、これを`rootDir`だけを受け取る実装に変更し、`pkgDir`を削除します。
 
-### 1.2 使用ライブラリ
-- go-mcp
-  - MCPサーバーの実装に使用
-  - 型安全性を確保
-  - コード生成による効率的な開発
-  - パッケージ名: `github.com/ktr0731/go-mcp`
-  - 主要なサブパッケージ:
-    - `github.com/ktr0731/go-mcp/codegen`: コード生成用
-    - `github.com/ktr0731/go-mcp/mcp`: MCPサーバー実装用
-- golang.org/x/tools/go/packages
-  - Goパッケージの解析に使用
-  - 高レベルAPIによる効率的な実装
-  - 依存関係の自動解決
-  - 型情報の完全な解析
-  - Go Modulesとの互換性
-- golang.org/x/tools/godoc
-  - Goドキュメントの解析と表示に使用
-  - コメントからドキュメント情報を抽出
+## 変更対象ファイル
 
-### 1.3 MCPツール
-1. `list_packages`
-   - 読み込んだパッケージの一覧表示
-   - パッケージコメントの出力
+1. `internal/parser/parser.go`
+2. `cmd/server/main.go`
+3. `cmd/parser/main.go`
+4. `internal/config/config.go`
+5. `internal/config/config_test.go`
 
-2. `inspect_package`
-   - パッケージ内の公開構造体、メソッド、関数のリスト表示
-   - 引数: パッケージ名、コメント有無（オプション）
+## 変更内容詳細
 
-3. `get_doc_struct`
-   - 構造体情報の取得
-   - 引数: パッケージ名、構造体名
+### 1. internal/parser/parser.go
 
-4. `get_doc_func`
-   - 関数情報の取得
-   - 引数: パッケージ名、関数名
+#### 変更前
 
-5. `get_doc_method`
-   - 構造体メソッド情報の取得
-   - 引数: パッケージ名、構造体名、メソッド名
+```go
+// New creates a Parser instance by loading Go packages from the specified directory.
+// rootDir is the base directory, and pkgDir specifies the pattern to load.
+// If pkgDir is empty, "./..." is used as the pattern.
+func New(rootDir string, pkgDir string) (*Parser, error) {
+	patterns := []string{"./..."}
+	if pkgDir != "" {
+		patterns = []string{pkgDir}
+	}
 
-6. `get_doc_const_and_var`
-   - 定数・変数情報の取得
-   - 引数: パッケージ名
+	cfg := &packages.Config{
+		Mode: packages.NeedName |
+			packages.NeedFiles |
+			packages.NeedCompiledGoFiles |
+			packages.NeedImports |
+			packages.NeedDeps |
+			packages.NeedTypes |
+			packages.NeedSyntax |
+			packages.NeedTypesInfo,
+		Dir:   rootDir,
+		Tests: false,
+	}
 
-## 2. 実装ステップ
+	// 以下省略
+}
+```
 
-### 2.1 プロジェクト構造の整理
-- [x] プロジェクト構造の作成
-  - [x] `cmd/mcpgen/`ディレクトリの作成
-  - [x] `cmd/server/`ディレクトリの作成
-  - [x] `internal/handler/`ディレクトリの作成
-  - [x] `internal/model/`ディレクトリの作成
-  - [x] `internal/parser/`ディレクトリの作成（Goファイル解析用）
+#### 変更後
 
-### 2.2 コード生成の設定
-- [x] `cmd/mcpgen/main.go`の実装
-  - [x] サーバー定義の作成
-  - [x] コード生成の実行
-    - `go run ./cmd/mcpgen`
+```go
+// New creates a Parser instance by loading Go packages from the specified directory.
+// rootDir is the base directory where packages will be loaded from.
+func New(rootDir string) (*Parser, error) {
+	patterns := []string{"./..."}
 
-### 2.3 サーバー実装
-- [x] `cmd/server/main.go`の実装
-  - [x] コマンドラインオプションの実装
-  - [x] パーサーの初期化
-  - [x] MCPサーバーの起動
-  - [x] エラーハンドリング
+	cfg := &packages.Config{
+		Mode: packages.NeedName |
+			packages.NeedFiles |
+			packages.NeedCompiledGoFiles |
+			packages.NeedImports |
+			packages.NeedDeps |
+			packages.NeedTypes |
+			packages.NeedSyntax |
+			packages.NeedTypesInfo,
+		Dir:   rootDir,
+		Tests: false,
+	}
 
-### 2.4 ツールハンドラーの実装
-- [x] `internal/handler/handler.go`の実装
-  - [x] ハンドラー構造体の定義
-  - [x] `list_packages`ハンドラーの実装
-    - [x] 基本的な実装
-    - [x] 適切なフォーマットの実装
-  - [x] `inspect_package`ハンドラーの実装
-    - [x] 基本的な実装
-    - [x] パッケージの構造体、メソッド、関数の情報抽出
-  - [x] `get_doc_struct`ハンドラーの実装
-    - [x] 基本的な実装
-    - [x] 構造体情報の抽出
-  - [x] `get_doc_func`ハンドラーの実装
-    - [x] 基本的な実装
-    - [x] 関数情報の抽出
-  - [x] `get_doc_method`ハンドラーの実装
-    - [x] 基本的な実装
-    - [x] メソッド情報の抽出
-  - [x] `get_doc_const_and_var`ハンドラーの実装
-    - [x] 基本的な実装
-    - [x] 定数・変数情報の抽出
-  - [x] エラーハンドリング
-  - [x] レスポンスの整形
-    - [x] マークダウン形式での出力
-    - [x] コードブロックの適切な使用
+	// 以下省略
+}
+```
 
-### 2.5 Goファイル解析の実装
-- [x] `internal/parser/parser.go`の実装
-  - [x] `golang.org/x/tools/go/packages`を使用したパッケージロード
-    - [x] `New`関数によるパッケージのロード
-    - [x] `GetAllPackages`関数による全パッケージの取得
-    - [x] `GetPackage`関数による特定パッケージの取得
-  - [x] パッケージ情報の抽出
-  - [x] 構造体情報の抽出
-    - [x] `GetStructInfo`関数による構造体情報の取得
-    - [x] フィールド情報の取得
-    - [x] メソッド情報の取得
-  - [x] 関数情報の抽出
-    - [x] `GetFuncInfo`関数による関数情報の取得
-    - [x] 例の取得
-  - [x] メソッド情報の抽出
-    - [x] `GetMethodInfo`関数によるメソッド情報の取得
-    - [x] 例の取得
-  - [x] 定数・変数情報の抽出
-    - [x] `GetConstAndVarInfo`関数による定数・変数情報の取得
-  - [x] ヘルパー関数の公開
-    - [x] `GetComment`関数によるコメント取得
-    - [x] `GetExamples`関数による例取得
-    - [x] `GetNodeString`関数によるASTノード文字列化
-  - [ ] パフォーマンス最適化
-    - [ ] 並行処理による解析の高速化
-    - [ ] メモリ使用量の最適化
-    - [ ] インクリメンタル解析の実装（オプション）
+### 2. cmd/server/main.go
 
-### 2.6 データモデルの設計
-- [x] `internal/model/model.go`の実装
-  - [x] MCPツールのリクエストパラメータを表す構造体や、レスポンス整形用の補助的な構造体を定義する
+#### 変更前
 
-### 2.7 レスポンス設計
-- [x] 各ツールのレスポンス形式の定義
-  - [x] 共通レスポンス構造の設計
-  - [x] `list_packages`のレスポンス
-  - [x] `inspect_package`のレスポンス
-  - [x] `get_doc_struct`のレスポンス
-  - [x] `get_doc_func`のレスポンス
-  - [x] `get_doc_method`のレスポンス
-  - [x] `get_doc_const_and_var`のレスポンス
+```go
+// Parse command line arguments
+rootDir := flag.String("root", "", "Root directory path")
+pkgDir := flag.String("pkg", "", "Specific package directory (optional)")
+flag.Parse()
 
-### 2.8 テストの実装
-- [ ] ユニットテストの作成
-  - [ ] ハンドラーのテスト
-  - [ ] パーサーのテスト
-    - [ ] パッケージロードのテスト
-    - [ ] 情報抽出のテスト
-    - [ ] エラーケースのテスト
-  - [ ] モデルのテスト
-    - [ ] データモデルの操作テスト
-    - [ ] 検索機能のテスト
-- [ ] 統合テストの作成
-  - [ ] サーバー全体のテスト
-    - [ ] コマンドラインオプションのテスト
-    - [ ] エンドツーエンドのテスト
-  - [ ] テストデータの準備
-    - [ ] サンプルGoコードの作成
-    - [ ] 期待される出力の定義
+// Get configuration values
+rootPath := config.GetRootDir(*rootDir)
+pkgPath := config.GetPkgDir(*pkgDir)
 
-## 3. 実装の優先順位
+// Initialize parser
+p, err := parser.New(rootPath, pkgPath)
+```
 
-1. 基本的なMCPサーバーの構築
-   - [x] コード生成の設定
-   - [x] サーバーの起動
-   - [x] 基本的なツールの実装
+#### 変更後
 
-2. Goファイル解析の実装
-   - [x] `golang.org/x/tools/go/packages`を使用したパーサーの実装
-   - [x] 情報抽出の実装
-   - [x] データモデルの実装
+```go
+// Parse command line arguments
+rootDir := flag.String("root", "", "Root directory path")
+flag.Parse()
 
-3. ツールハンドラーの実装
-   - [x] 各ツールのハンドラー実装
-   - [x] レスポンス形式の統一
-   - [x] エラーハンドリングの実装
+// Get configuration values
+rootPath := config.GetRootDir(*rootDir)
 
-4. テストとドキュメントの整備
-   - [ ] ユニットテスト
-   - [ ] 統合テスト
-   - [ ] APIドキュメント
-   - [ ] 使用例の作成
+// Initialize parser
+p, err := parser.New(rootPath)
+```
 
-## 4. 注意点
+### 3. cmd/parser/main.go
 
-- [ ] 型安全性の確保
-  - [ ] コード生成による型安全なインターフェースの実現
-  - [ ] 適切な型変換の実装
+#### 変更前
 
-- [ ] エラーハンドリングの徹底
-  - [ ] 具体的なエラーケースの特定と対応
-  - [ ] ユーザーフレンドリーなエラーメッセージ
-  - [ ] エラーの適切な伝播
+```go
+// Parse command line arguments
+rootDir := flag.String("root", "", "Root directory path")
+pkgDir := flag.String("pkg", "", "Specific package directory (optional)")
+flag.Parse()
 
-- [ ] パフォーマンスの考慮
-  - [ ] 大規模プロジェクトでの動作確認
-  - [ ] メモリ使用量の最適化
-  - [ ] 並行処理の活用
+// Get configuration values
+rootPath := config.GetRootDir(*rootDir)
+pkgPath := config.GetPkgDir(*pkgDir)
 
-- [ ] Goファイル解析の正確性
-  - [ ] コメント解析の正確性
-  - [ ] 型情報の正確な抽出
-  - [ ] エッジケースの考慮
+// Initialize parser
+p, err := parser.New(rootPath, pkgPath)
+```
 
-## 5. 次のステップ
+#### 変更後
 
-1. [x] プロジェクト構造の作成
-2. [x] `cmd/mcpgen/main.go`の実装
-3. [x] 基本的なツールの定義
-4. [x] コード生成の実行
-5. [x] `internal/model/model.go` の実装 (MCPパラメータ/レスポンス整形用構造体)
-6. [x] `internal/parser/parser.go`の実装
-7. [x] `internal/handler/handler.go`の実装 (基本実装)
-8. [x] `cmd/server/main.go`の実装
-9. [ ] テストの実装
-10. [ ] ドキュメントの整備
+```go
+// Parse command line arguments
+rootDir := flag.String("root", "", "Root directory path")
+flag.Parse()
 
-## テストコードの指摘事項
+// Get configuration values
+rootPath := config.GetRootDir(*rootDir)
 
-1. テストケースの定義形式
-   - `[]struct`ではなく`map[string]struct`を使用する
-   - テストケースの名前を`name`フィールドからマップのキーに移動する
+// Initialize parser
+p, err := parser.New(rootPath)
+```
 
-2. 並列実行
-   - 各テスト関数の先頭に`t.Parallel()`を追加する
-   - サブテスト内でも`t.Parallel()`を呼び出す
+### 4. internal/config/config.go
 
-3. ループ変数のシャドウイング
-   - Go 1.24以降では`tt := tt`は不要
-   - 以前のバージョンでは必要だったが、現在は不要
+#### 変更前
 
-4. JSONの比較
-   - 文字列として直接比較するのではなく、一度パースしてから比較する
-   - これにより、JSONの整形の違いを無視できる
+```go
+const (
+	// Environment variable names
+	EnvRootDir = "GODOC_MCP_ROOT_DIR"
+	EnvPkgDir  = "GODOC_MCP_PKG_DIR"
+)
 
-## 次のタスク
+// GetPkgDir returns the package directory path.
+// Priority order:
+// 1. Command line argument
+// 2. Environment variable
+// 3. Empty string (no specification)
+func GetPkgDir(cmdPkgDir string) string {
+	if cmdPkgDir != "" {
+		return cmdPkgDir
+	}
+	return os.Getenv(EnvPkgDir)
+}
+```
 
-1. 設定値の取得処理の改善
-   - [x] 設定値取得用の新しいパッケージ`internal/config`の作成
-   - [x] 設定値取得関数の実装
-     - [x] コマンドライン引数、環境変数、デフォルト値の優先順位付け
-     - [x] テスト可能な設計
-   - [x] 環境変数の定義
-     - [x] `GODOC_MCP_ROOT_DIR`: ディレクトリルートパス用
-     - [x] `GODOC_MCP_PKG_DIR`: パッケージディレクトリ用
-   - [x] テストの実装
-     - [x] 各優先順位での動作確認
-     - [x] エラーケースのテスト
+#### 変更後
 
-2. パーサーの実装
-   - [x] `golang.org/x/tools/go/packages`を使用したパッケージロード
-   - [x] パッケージ情報の抽出
-   - [x] 構造体情報の抽出
-   - [x] 関数情報の抽出
-   - [x] メソッド情報の抽出
-   - [x] 定数・変数情報の抽出
+```go
+const (
+	// Environment variable names
+	EnvRootDir = "GODOC_MCP_ROOT_DIR"
+)
+```
 
-3. ハンドラーの実装
-   - [x] `list_packages`ハンドラーの実装
-     - [x] 基本的な実装
-     - [x] 適切なフォーマットの実装
-   - [x] `inspect_package`ハンドラーの実装
-     - [x] 基本的な実装
-     - [x] パッケージの構造体、メソッド、関数の情報抽出
-   - [x] `get_doc_struct`ハンドラーの実装
-     - [x] 基本的な実装
-     - [x] 構造体情報の抽出
-   - [x] `get_doc_func`ハンドラーの実装
-     - [x] 基本的な実装
-     - [x] 関数情報の抽出
-   - [x] `get_doc_method`ハンドラーの実装
-     - [x] 基本的な実装
-     - [x] メソッド情報の抽出
-   - [x] `get_doc_const_and_var`ハンドラーの実装
-     - [x] 基本的な実装
-     - [x] 定数・変数情報の抽出
-   - [x] レスポンスの整形
-     - [x] マークダウン形式での出力
-     - [x] コードブロックの適切な使用
+`GetPkgDir`関数と`EnvPkgDir`定数を削除します。
 
-4. パフォーマンス最適化
-   - [ ] 並行処理による解析の高速化
-     - [ ] パッケージ解析の並行化
-       - [ ] `parser.Parser`に並行処理用のフィールドを追加
-       - [ ] `sync.WaitGroup`を使用した並行処理の制御
-       - [ ] エラーハンドリングの改善
-     - [ ] 情報収集の並行化
-       - [ ] 構造体情報の並行収集
-       - [ ] 関数・メソッド情報の並行収集
-       - [ ] 例の並行収集
-     - [ ] 並行処理のテスト
-       - [ ] 競合状態のテスト
-       - [ ] デッドロックのテスト
-       - [ ] パフォーマンス測定
-   - [ ] キャッシュの導入
-     - [ ] パッケージ情報のキャッシュ
-       - [ ] `sync.Map`を使用したキャッシュ実装
-       - [ ] キャッシュの有効期限設定
-       - [ ] キャッシュの更新戦略
-     - [ ] 構造体情報のキャッシュ
-       - [ ] 構造体定義のキャッシュ
-       - [ ] フィールド情報のキャッシュ
-       - [ ] メソッド情報のキャッシュ
-     - [ ] 関数・メソッド情報のキャッシュ
-       - [ ] 関数定義のキャッシュ
-       - [ ] メソッド定義のキャッシュ
-       - [ ] 例のキャッシュ
-     - [ ] キャッシュのテスト
-       - [ ] キャッシュの有効性テスト
-       - [ ] メモリ使用量のテスト
-       - [ ] パフォーマンス測定
-   - [ ] メモリ使用量の最適化
-     - [ ] 不要なデータの早期解放
-       - [ ] 一時オブジェクトの適切な解放
-       - [ ] 大きなデータ構造の共有
-       - [ ] メモリリークの防止
-     - [ ] スライスの事前割り当て
-       - [ ] パッケージリストの事前割り当て
-       - [ ] 構造体リストの事前割り当て
-       - [ ] 関数・メソッドリストの事前割り当て
-     - [ ] メモリ使用量の監視
-       - [ ] メモリ使用量の計測
-       - [ ] メモリ使用量の最適化
-       - [ ] メモリ使用量のレポート
-   - [ ] インクリメンタル解析の実装（オプション）
-     - [ ] ファイル変更の監視
-       - [ ] `fsnotify`を使用したファイル監視
-       - [ ] 変更検知の実装
-       - [ ] 変更通知の実装
-     - [ ] 差分解析の実装
-       - [ ] 変更されたファイルの特定
-       - [ ] 影響範囲の特定
-       - [ ] 必要な部分のみの再解析
-     - [ ] インクリメンタル解析のテスト
-       - [ ] 変更検知のテスト
-       - [ ] 差分解析のテスト
-       - [ ] パフォーマンス測定
+### 5. internal/config/config_test.go
 
-5. テストの実装
-   - [ ] ハンドラーのテスト
-     - [ ] 各ツールハンドラーの入出力テスト
-     - [ ] エラーケースのテスト
-   - [ ] パーサーのテスト
-     - [ ] パッケージロードのテスト
-     - [ ] 情報抽出のテスト
-     - [ ] エラーケースのテスト
-   - [ ] 統合テスト
-     - [ ] サーバー全体のテスト
-     - [ ] テストデータの準備
+`TestGetPkgDir`テスト（52-93行目）を削除します。
 
-6. ドキュメントの整備
-   - [ ] READMEの更新
-   - [ ] 使用例の追加
+## 変更理由
 
-## 最近の実装
-
-1. ハンドラーの完全実装
-   - 各ハンドラーメソッドを実装し、モデルを使用して適切なレスポンスを生成するようにしました
-   - マークダウン形式の出力を実装しました
-   - エラー処理を改善しました
-
-2. パーサーパッケージの改善
-   - 以前は非公開だった有用なヘルパー関数(`getComment`, `getExamples`, `getNodeString`)を公開しました
-   - それらの関数名を`GetComment`, `GetExamples`, `GetNodeString`に変更しました
-   - 関数の公開により、ハンドラーパッケージでの重複実装を排除しました
-   - パッケージコメントを取得するための`GetPackageComment`関数を追加しました
-   - ハンドラー内のTODOコメント「パッケージコメントは後で適切な方法で取得する」を解決しました
-
-3. コードの整理と品質改善
-   - 重複コードを排除して保守性を向上させました
-   - 各コンポーネント間の依存関係を明確にしました
-   - ビルドが正常に成功することを確認しました
-
-## 今後の改善点
-
-1. テストカバレッジの確認
-2. エラーケースのテスト追加
-3. テストヘルパー関数の作成
-4. テストデータの共通化
+このリファクタリングにより、コードがシンプルになり、メンテナンス性が向上します。`pkgDir`パラメータは実際には常に`"./..."`パターンを使用するか、指定された場合はそのパターンを使用するだけでした。この変更により、常に`"./..."`パターンを使用するようになり、コードの複雑さが軽減されます。

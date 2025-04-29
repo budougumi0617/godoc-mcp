@@ -16,15 +16,13 @@ import (
 func main() {
 	// Parse command line arguments
 	rootDir := flag.String("root", "", "Root directory path")
-	pkgDir := flag.String("pkg", "", "Specific package directory (optional)")
 	flag.Parse()
 
 	// Get configuration values
 	rootPath := config.GetRootDir(*rootDir)
-	pkgPath := config.GetPkgDir(*pkgDir)
 
 	// Initialize parser
-	p, err := parser.New(rootPath, pkgPath)
+	p, err := parser.New(rootPath)
 	if err != nil {
 		log.Fatalf("Failed to initialize parser: %v", err)
 	}

@@ -17,13 +17,9 @@ type Parser struct {
 }
 
 // New creates a Parser instance by loading Go packages from the specified directory.
-// rootDir is the base directory, and pkgDir specifies the pattern to load.
-// If pkgDir is empty, "./..." is used as the pattern.
-func New(rootDir string, pkgDir string) (*Parser, error) {
+// rootDir is the base directory where packages will be loaded from.
+func New(rootDir string) (*Parser, error) {
 	patterns := []string{"./..."}
-	if pkgDir != "" {
-		patterns = []string{pkgDir}
-	}
 
 	cfg := &packages.Config{
 		Mode: packages.NeedName |
