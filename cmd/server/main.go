@@ -6,6 +6,7 @@ import (
 	"log"
 
 	godoc "github.com/budougumi0617/godoc-mcp"
+	"github.com/budougumi0617/godoc-mcp/internal/config"
 	"github.com/budougumi0617/godoc-mcp/internal/handler"
 	"github.com/budougumi0617/godoc-mcp/internal/parser"
 	mcp "github.com/ktr0731/go-mcp"
@@ -14,12 +15,16 @@ import (
 
 func main() {
 	// コマンドライン引数のパース
-	rootDir := flag.String("root", ".", "ディレクトリルートパス")
+	rootDir := flag.String("root", "", "ディレクトリルートパス")
 	pkgDir := flag.String("pkg", "", "特定のパッケージディレクトリ（オプション）")
 	flag.Parse()
 
+	// 設定値の取得
+	rootPath := config.GetRootDir(*rootDir)
+	pkgPath := config.GetPkgDir(*pkgDir)
+
 	// パーサーの初期化
-	p, err := parser.New(*rootDir, *pkgDir)
+	p, err := parser.New(rootPath, pkgPath)
 	if err != nil {
 		log.Fatalf("パーサーの初期化に失敗しました: %v", err)
 	}
