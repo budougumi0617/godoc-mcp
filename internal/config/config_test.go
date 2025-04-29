@@ -7,7 +7,10 @@ import (
 )
 
 func TestGetRootDir(t *testing.T) {
-	t.Parallel()
+	currentDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("os.Getwd() error = %v", err)
+	}
 
 	tests := map[string]struct {
 		cmdRootDir string
@@ -27,23 +30,21 @@ func TestGetRootDir(t *testing.T) {
 		"Default value is used": {
 			cmdRootDir: "",
 			envRootDir: "",
-			want:       ".",
+			want:       currentDir,
 		},
 	}
 
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 
 			// Set environment variable
 			if tt.envRootDir != "" {
-				os.Setenv(EnvRootDir, tt.envRootDir)
-				defer os.Unsetenv(EnvRootDir)
+				t.Setenv(EnvRootDir, tt.envRootDir)
 			}
 
 			got := GetRootDir(tt.cmdRootDir)
 			if got != tt.want {
-				t.Errorf("GetRootDir() = %v, want %v", got, tt.want)
+				t.Errorf("GetRootDir() = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -51,6 +52,10 @@ func TestGetRootDir(t *testing.T) {
 
 func TestGetAbsPath(t *testing.T) {
 	t.Parallel()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("os.Getwd() error = %v", err)
+	}
 
 	tests := map[string]struct {
 		path string
@@ -62,7 +67,7 @@ func TestGetAbsPath(t *testing.T) {
 		},
 		"Relative path is converted to absolute path": {
 			path: "relative/path",
-			want: filepath.Join(t.TempDir(), "relative/path"),
+			want: filepath.Join(dir, "relative/path"),
 		},
 	}
 
