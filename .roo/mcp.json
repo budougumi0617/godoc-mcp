@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "godoc-mcp": {
+      "type": "stdio",
+      "command": "go",
+      "args": [
+        "run",
+        "./cmd/server"
+      ],
+      "env": {
+        "GOPATH": "${env:HOME}/go",
+        "HOME": "${env:HOME}",
+        "GOCACHE": "${env:HOME}/Library/Caches/go-build"
+      }
+    }
+  }
+}
