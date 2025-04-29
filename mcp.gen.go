@@ -17,45 +17,45 @@ type ServerPromptHandler interface {
 
 // ServerToolHandler is the interface for tool handlers.
 type ServerToolHandler interface {
-	HandleToolListPackages(ctx context.Context, req *ToolListPackagesRequest) (*mcp.CallToolResult, error)
-	HandleToolInspectPackage(ctx context.Context, req *ToolInspectPackageRequest) (*mcp.CallToolResult, error)
-	HandleToolGetDocStruct(ctx context.Context, req *ToolGetDocStructRequest) (*mcp.CallToolResult, error)
-	HandleToolGetDocFunc(ctx context.Context, req *ToolGetDocFuncRequest) (*mcp.CallToolResult, error)
-	HandleToolGetDocMethod(ctx context.Context, req *ToolGetDocMethodRequest) (*mcp.CallToolResult, error)
-	HandleToolGetDocConstAndVar(ctx context.Context, req *ToolGetDocConstAndVarRequest) (*mcp.CallToolResult, error)
+	HandleToolGolangListPackages(ctx context.Context, req *ToolGolangListPackagesRequest) (*mcp.CallToolResult, error)
+	HandleToolGolangInspectPackage(ctx context.Context, req *ToolGolangInspectPackageRequest) (*mcp.CallToolResult, error)
+	HandleToolGolangGetStructDoc(ctx context.Context, req *ToolGolangGetStructDocRequest) (*mcp.CallToolResult, error)
+	HandleToolGolangGetFuncDoc(ctx context.Context, req *ToolGolangGetFuncDocRequest) (*mcp.CallToolResult, error)
+	HandleToolGolangGetMethodDoc(ctx context.Context, req *ToolGolangGetMethodDocRequest) (*mcp.CallToolResult, error)
+	HandleToolGolangGetConstAndVarDoc(ctx context.Context, req *ToolGolangGetConstAndVarDocRequest) (*mcp.CallToolResult, error)
 }
 
-// ToolListPackagesRequest contains input parameters for the list_packages tool.
-type ToolListPackagesRequest struct {
+// ToolGolangListPackagesRequest contains input parameters for the golang_list_packages tool.
+type ToolGolangListPackagesRequest struct {
 }
 
-// ToolInspectPackageRequest contains input parameters for the inspect_package tool.
-type ToolInspectPackageRequest struct {
+// ToolGolangInspectPackageRequest contains input parameters for the golang_inspect_package tool.
+type ToolGolangInspectPackageRequest struct {
 	PackageName     string `json:"package_name"`
 	IncludeComments bool   `json:"include_comments,omitempty"`
 }
 
-// ToolGetDocStructRequest contains input parameters for the get_doc_struct tool.
-type ToolGetDocStructRequest struct {
+// ToolGolangGetStructDocRequest contains input parameters for the golang_get_struct_doc tool.
+type ToolGolangGetStructDocRequest struct {
 	PackageName string `json:"package_name"`
 	StructName  string `json:"struct_name"`
 }
 
-// ToolGetDocFuncRequest contains input parameters for the get_doc_func tool.
-type ToolGetDocFuncRequest struct {
+// ToolGolangGetFuncDocRequest contains input parameters for the golang_get_func_doc tool.
+type ToolGolangGetFuncDocRequest struct {
 	PackageName string `json:"package_name"`
 	FuncName    string `json:"func_name"`
 }
 
-// ToolGetDocMethodRequest contains input parameters for the get_doc_method tool.
-type ToolGetDocMethodRequest struct {
+// ToolGolangGetMethodDocRequest contains input parameters for the golang_get_method_doc tool.
+type ToolGolangGetMethodDocRequest struct {
 	PackageName string `json:"package_name"`
 	StructName  string `json:"struct_name"`
 	MethodName  string `json:"method_name"`
 }
 
-// ToolGetDocConstAndVarRequest contains input parameters for the get_doc_const_and_var tool.
-type ToolGetDocConstAndVarRequest struct {
+// ToolGolangGetConstAndVarDocRequest contains input parameters for the golang_get_const_and_var_doc tool.
+type ToolGolangGetConstAndVarDocRequest struct {
 	PackageName string `json:"package_name"`
 }
 
@@ -64,45 +64,45 @@ var PromptList = []protocol.Prompt{}
 
 // JSON Schema type definitions generated from inputSchema
 var (
-	ToolListPackagesInputSchema      = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{},"additionalProperties":false,"type":"object"}`)
-	ToolInspectPackageInputSchema    = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"package_name":{"type":"string","description":"Package name"},"include_comments":{"type":"boolean","description":"Whether to include comments","default":true}},"additionalProperties":false,"type":"object","required":["package_name"]}`)
-	ToolGetDocStructInputSchema      = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"package_name":{"type":"string","description":"Package name of the struct"},"struct_name":{"type":"string","description":"Name of the struct"}},"additionalProperties":false,"type":"object","required":["package_name","struct_name"]}`)
-	ToolGetDocFuncInputSchema        = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"package_name":{"type":"string","description":"Package name of the function"},"func_name":{"type":"string","description":"Name of the function"}},"additionalProperties":false,"type":"object","required":["package_name","func_name"]}`)
-	ToolGetDocMethodInputSchema      = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"package_name":{"type":"string","description":"Package name of the struct"},"struct_name":{"type":"string","description":"Name of the struct"},"method_name":{"type":"string","description":"Name of the method"}},"additionalProperties":false,"type":"object","required":["package_name","struct_name","method_name"]}`)
-	ToolGetDocConstAndVarInputSchema = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"package_name":{"type":"string","description":"Package name"}},"additionalProperties":false,"type":"object","required":["package_name"]}`)
+	ToolGolangListPackagesInputSchema      = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{},"additionalProperties":false,"type":"object"}`)
+	ToolGolangInspectPackageInputSchema    = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"package_name":{"type":"string","description":"Package name"},"include_comments":{"type":"boolean","description":"Whether to include comments","default":true}},"additionalProperties":false,"type":"object","required":["package_name"]}`)
+	ToolGolangGetStructDocInputSchema      = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"package_name":{"type":"string","description":"Package name where the struct is defined"},"struct_name":{"type":"string","description":"Name of the struct"}},"additionalProperties":false,"type":"object","required":["package_name","struct_name"]}`)
+	ToolGolangGetFuncDocInputSchema        = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"package_name":{"type":"string","description":"Package name where the function is defined"},"func_name":{"type":"string","description":"Name of the function"}},"additionalProperties":false,"type":"object","required":["package_name","func_name"]}`)
+	ToolGolangGetMethodDocInputSchema      = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"package_name":{"type":"string","description":"Package name where the method is defined"},"struct_name":{"type":"string","description":"Name of the struct that owns the method"},"method_name":{"type":"string","description":"Name of the method"}},"additionalProperties":false,"type":"object","required":["package_name","struct_name","method_name"]}`)
+	ToolGolangGetConstAndVarDocInputSchema = json.RawMessage(`{"$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"package_name":{"type":"string","description":"Package name"}},"additionalProperties":false,"type":"object","required":["package_name"]}`)
 )
 
 // ToolList contains all available tools.
 var ToolList = []protocol.Tool{
 	{
-		Name:        "list_packages",
-		Description: "Display a list of loaded packages and their package comments",
-		InputSchema: ToolListPackagesInputSchema,
+		Name:        "golang_list_packages",
+		Description: "Display a list of Go packages and their package comments. You can check the description and purpose of each package.",
+		InputSchema: ToolGolangListPackagesInputSchema,
 	},
 	{
-		Name:        "inspect_package",
-		Description: "List publicly available structs, methods, and functions in the specified package",
-		InputSchema: ToolInspectPackageInputSchema,
+		Name:        "golang_inspect_package",
+		Description: "List publicly available structs, methods, and functions in the specified Go package. You can check comments for each element.",
+		InputSchema: ToolGolangInspectPackageInputSchema,
 	},
 	{
-		Name:        "get_doc_struct",
-		Description: "Return information about the specified struct",
-		InputSchema: ToolGetDocStructInputSchema,
+		Name:        "golang_get_struct_doc",
+		Description: "Display detailed information about the specified Go struct. You can check the struct's comments, fields, methods, and their comments.",
+		InputSchema: ToolGolangGetStructDocInputSchema,
 	},
 	{
-		Name:        "get_doc_func",
-		Description: "Return information about the specified function",
-		InputSchema: ToolGetDocFuncInputSchema,
+		Name:        "golang_get_func_doc",
+		Description: "Display detailed information about the specified Go function. You can check the function's signature, comments, and usage examples.",
+		InputSchema: ToolGolangGetFuncDocInputSchema,
 	},
 	{
-		Name:        "get_doc_method",
-		Description: "Return information about the specified method of a struct",
-		InputSchema: ToolGetDocMethodInputSchema,
+		Name:        "golang_get_method_doc",
+		Description: "Display detailed information about the specified Go struct method. You can check the method's signature, comments, and usage examples.",
+		InputSchema: ToolGolangGetMethodDocInputSchema,
 	},
 	{
-		Name:        "get_doc_const_and_var",
-		Description: "Return information about constants and variables in the specified package",
-		InputSchema: ToolGetDocConstAndVarInputSchema,
+		Name:        "golang_get_const_and_var_doc",
+		Description: "Display detailed information about constants and variables in the specified Go package. You can check the type, value, and comments for each constant and variable.",
+		InputSchema: ToolGolangGetConstAndVarDocInputSchema,
 	},
 }
 
@@ -128,8 +128,8 @@ func NewHandler(toolHandler ServerToolHandler) *mcp.Handler {
 		switch method {
 		case "tools/call":
 			switch req.Name {
-			case "list_packages":
-				var in ToolListPackagesRequest
+			case "golang_list_packages":
+				var in ToolGolangListPackagesRequest
 				if err := json.Unmarshal(req.Arguments, &in); err != nil {
 					return nil, err
 				}
@@ -137,9 +137,9 @@ func NewHandler(toolHandler ServerToolHandler) *mcp.Handler {
 				if err := protocol.ValidateByJSONSchema(string(inputSchema), in); err != nil {
 					return nil, err
 				}
-				return toolHandler.HandleToolListPackages(ctx, &in)
-			case "inspect_package":
-				var in ToolInspectPackageRequest
+				return toolHandler.HandleToolGolangListPackages(ctx, &in)
+			case "golang_inspect_package":
+				var in ToolGolangInspectPackageRequest
 				if err := json.Unmarshal(req.Arguments, &in); err != nil {
 					return nil, err
 				}
@@ -147,9 +147,9 @@ func NewHandler(toolHandler ServerToolHandler) *mcp.Handler {
 				if err := protocol.ValidateByJSONSchema(string(inputSchema), in); err != nil {
 					return nil, err
 				}
-				return toolHandler.HandleToolInspectPackage(ctx, &in)
-			case "get_doc_struct":
-				var in ToolGetDocStructRequest
+				return toolHandler.HandleToolGolangInspectPackage(ctx, &in)
+			case "golang_get_struct_doc":
+				var in ToolGolangGetStructDocRequest
 				if err := json.Unmarshal(req.Arguments, &in); err != nil {
 					return nil, err
 				}
@@ -157,9 +157,9 @@ func NewHandler(toolHandler ServerToolHandler) *mcp.Handler {
 				if err := protocol.ValidateByJSONSchema(string(inputSchema), in); err != nil {
 					return nil, err
 				}
-				return toolHandler.HandleToolGetDocStruct(ctx, &in)
-			case "get_doc_func":
-				var in ToolGetDocFuncRequest
+				return toolHandler.HandleToolGolangGetStructDoc(ctx, &in)
+			case "golang_get_func_doc":
+				var in ToolGolangGetFuncDocRequest
 				if err := json.Unmarshal(req.Arguments, &in); err != nil {
 					return nil, err
 				}
@@ -167,9 +167,9 @@ func NewHandler(toolHandler ServerToolHandler) *mcp.Handler {
 				if err := protocol.ValidateByJSONSchema(string(inputSchema), in); err != nil {
 					return nil, err
 				}
-				return toolHandler.HandleToolGetDocFunc(ctx, &in)
-			case "get_doc_method":
-				var in ToolGetDocMethodRequest
+				return toolHandler.HandleToolGolangGetFuncDoc(ctx, &in)
+			case "golang_get_method_doc":
+				var in ToolGolangGetMethodDocRequest
 				if err := json.Unmarshal(req.Arguments, &in); err != nil {
 					return nil, err
 				}
@@ -177,9 +177,9 @@ func NewHandler(toolHandler ServerToolHandler) *mcp.Handler {
 				if err := protocol.ValidateByJSONSchema(string(inputSchema), in); err != nil {
 					return nil, err
 				}
-				return toolHandler.HandleToolGetDocMethod(ctx, &in)
-			case "get_doc_const_and_var":
-				var in ToolGetDocConstAndVarRequest
+				return toolHandler.HandleToolGolangGetMethodDoc(ctx, &in)
+			case "golang_get_const_and_var_doc":
+				var in ToolGolangGetConstAndVarDocRequest
 				if err := json.Unmarshal(req.Arguments, &in); err != nil {
 					return nil, err
 				}
@@ -187,7 +187,7 @@ func NewHandler(toolHandler ServerToolHandler) *mcp.Handler {
 				if err := protocol.ValidateByJSONSchema(string(inputSchema), in); err != nil {
 					return nil, err
 				}
-				return toolHandler.HandleToolGetDocConstAndVar(ctx, &in)
+				return toolHandler.HandleToolGolangGetConstAndVarDoc(ctx, &in)
 			default:
 				return nil, fmt.Errorf("tool not found: %s", req.Name)
 			}
