@@ -8,10 +8,20 @@
         "./cmd/server"
       ],
       "env": {
+        "GODOC_MCP_ROOT_DIR": "${env:HOME}/go/src/github.com/golang/tools/internal",
         "GOPATH": "${env:HOME}/go",
         "HOME": "${env:HOME}",
         "GOCACHE": "${env:HOME}/Library/Caches/go-build"
-      }
+      },
+      "disabled": false,
+      "alwaysAllow": [
+        "golang_list_packages",
+        "golang_inspect_package",
+        "golang_get_struct_doc",
+        "golang_get_func_doc",
+        "golang_get_method_doc",
+        "golang_get_const_and_var_doc"
+      ]
     }
   }
 }

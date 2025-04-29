@@ -24,8 +24,8 @@ func NewToolHandler(p *parser.Parser) *ToolHandler {
 	}
 }
 
-// HandleToolListPackages returns a list of all loaded packages.
-func (h *ToolHandler) HandleToolListPackages(ctx context.Context, req *godoc.ToolListPackagesRequest) (*mcp.CallToolResult, error) {
+// HandleToolGolangListPackages returns a list of all loaded packages.
+func (h *ToolHandler) HandleToolGolangListPackages(ctx context.Context, req *godoc.ToolGolangListPackagesRequest) (*mcp.CallToolResult, error) {
 	pkgs := h.parser.GetAllPackages()
 	if len(pkgs) == 0 {
 		return &mcp.CallToolResult{
@@ -55,8 +55,8 @@ func (h *ToolHandler) HandleToolListPackages(ctx context.Context, req *godoc.Too
 	}, nil
 }
 
-// HandleToolInspectPackage lists exported structs, methods, and functions in the specified package.
-func (h *ToolHandler) HandleToolInspectPackage(ctx context.Context, req *godoc.ToolInspectPackageRequest) (*mcp.CallToolResult, error) {
+// HandleToolGolangInspectPackage lists exported structs, methods, and functions in the specified package.
+func (h *ToolHandler) HandleToolGolangInspectPackage(ctx context.Context, req *godoc.ToolGolangInspectPackageRequest) (*mcp.CallToolResult, error) {
 	pkg, err := h.parser.GetPackage(req.PackageName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get package: %w", err)
@@ -126,8 +126,8 @@ func (h *ToolHandler) HandleToolInspectPackage(ctx context.Context, req *godoc.T
 	}, nil
 }
 
-// HandleToolGetDocStruct returns information about the specified struct.
-func (h *ToolHandler) HandleToolGetDocStruct(ctx context.Context, req *godoc.ToolGetDocStructRequest) (*mcp.CallToolResult, error) {
+// HandleToolGolangGetStructDoc returns information about the specified struct.
+func (h *ToolHandler) HandleToolGolangGetStructDoc(ctx context.Context, req *godoc.ToolGolangGetStructDocRequest) (*mcp.CallToolResult, error) {
 	structInfo, err := h.parser.GetStructInfo(req.PackageName, req.StructName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get struct info: %w", err)
@@ -164,8 +164,8 @@ func (h *ToolHandler) HandleToolGetDocStruct(ctx context.Context, req *godoc.Too
 	}, nil
 }
 
-// HandleToolGetDocFunc returns information about the specified function.
-func (h *ToolHandler) HandleToolGetDocFunc(ctx context.Context, req *godoc.ToolGetDocFuncRequest) (*mcp.CallToolResult, error) {
+// HandleToolGolangGetFuncDoc returns information about the specified function.
+func (h *ToolHandler) HandleToolGolangGetFuncDoc(ctx context.Context, req *godoc.ToolGolangGetFuncDocRequest) (*mcp.CallToolResult, error) {
 	funcInfo, err := h.parser.GetFuncInfo(req.PackageName, req.FuncName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get function info: %w", err)
@@ -191,8 +191,8 @@ func (h *ToolHandler) HandleToolGetDocFunc(ctx context.Context, req *godoc.ToolG
 	}, nil
 }
 
-// HandleToolGetDocMethod returns information about the specified method of a struct.
-func (h *ToolHandler) HandleToolGetDocMethod(ctx context.Context, req *godoc.ToolGetDocMethodRequest) (*mcp.CallToolResult, error) {
+// HandleToolGolangGetMethodDoc returns information about the specified method of a struct.
+func (h *ToolHandler) HandleToolGolangGetMethodDoc(ctx context.Context, req *godoc.ToolGolangGetMethodDocRequest) (*mcp.CallToolResult, error) {
 	methodInfo, err := h.parser.GetMethodInfo(req.PackageName, req.StructName, req.MethodName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get method info: %w", err)
@@ -218,8 +218,8 @@ func (h *ToolHandler) HandleToolGetDocMethod(ctx context.Context, req *godoc.Too
 	}, nil
 }
 
-// HandleToolGetDocConstAndVar returns information about constants and variables in the specified package.
-func (h *ToolHandler) HandleToolGetDocConstAndVar(ctx context.Context, req *godoc.ToolGetDocConstAndVarRequest) (*mcp.CallToolResult, error) {
+// HandleToolGolangGetConstAndVarDoc returns information about constants and variables in the specified package.
+func (h *ToolHandler) HandleToolGolangGetConstAndVarDoc(ctx context.Context, req *godoc.ToolGolangGetConstAndVarDocRequest) (*mcp.CallToolResult, error) {
 	constInfos, varInfos, err := h.parser.GetConstAndVarInfo(req.PackageName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get constant and variable info: %w", err)
